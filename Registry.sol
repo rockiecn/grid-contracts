@@ -41,6 +41,11 @@ contract Registry {
         registry[msg.sender].total.GPU=gpu;
         registry[msg.sender].total.MEM=mem;
         registry[msg.sender].total.DISK=disk;
+
+        registry[msg.sender].avail.CPU=cpu;
+        registry[msg.sender].avail.GPU=gpu;
+        registry[msg.sender].avail.MEM=mem;
+        registry[msg.sender].avail.DISK=disk;
     }
 
     /**
@@ -55,6 +60,16 @@ contract Registry {
      * @dev update avail with order info
      */
     function update(uint64 cpu, uint64 gpu, uint64 mem, uint64 disk) public {
+
+        assert(cpu <= registry[msg.sender].avail.CPU);
+        assert(gpu <= registry[msg.sender].avail.GPU);
+        assert(mem <= registry[msg.sender].avail.MEM);
+        assert(disk <= registry[msg.sender].avail.DISK);
+
+        registry[msg.sender].avail.CPU -= cpu;
+        registry[msg.sender].avail.GPU -= gpu;
+        registry[msg.sender].avail.MEM -= mem;
+        registry[msg.sender].avail.DISK -= disk;
 
     }
 
