@@ -8,7 +8,7 @@ Registry contract is used to manage all providers' details, including host infor
 
 ### Data structures
 
-struct resources: 
+struct resources:
 
 Records information about all resources, including cpu, memory, storage, gpu. Two instances in all, one is for total resources, the other is for available resources.
 
@@ -32,7 +32,7 @@ Used to update a node's available resource information. The caller must be marke
 
 ## Market
 
-
+ 
 
 
 ## ERC20
