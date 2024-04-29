@@ -53,13 +53,12 @@ contract MyToken is ERC20, Ownable{
     PledgePool public pp;
 
     // contract constructor, can assign an address to be the initial owner
-    constructor(address initialOwner)
+    constructor(address )
         ERC20("GridToken", "GTK")//此处表示代币的名称和缩写
-        Ownable(initialOwner)
-        ERC20Permit("GridToken")
+        Ownable()
     {
         // mint some tokens for the initial owner
-        _mint(initialOwner, initialSupply);
+        _mint(msg.sender, initialSupply);
     }
 
     // mint for token
