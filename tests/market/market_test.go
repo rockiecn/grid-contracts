@@ -97,7 +97,7 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	// generate an order with init data
-	deposit, ok := new(big.Int).SetString("10000000000000000", 10)
+	totalValue, ok := new(big.Int).SetString("10000000000000000", 10)
 	if !ok {
 		log.Fatal("big set string failed")
 	}
@@ -122,7 +122,8 @@ func TestCreateOrder(t *testing.T) {
 			NDISK: 100,
 		},
 		// deposit 0.01 eth
-		Deposit:         deposit,
+		TotalValue:      totalValue,
+		Remain:          totalValue,
 		Remuneration:    remu,
 		UserConfirm:     false,
 		ProviderConfirm: false,
@@ -135,7 +136,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// mint some token for approve
 	t.Log("mint token to user")
-	tx, err = tokenIns.Mint(txAuth, Addr1, order.Deposit)
+	tx, err = tokenIns.Mint(txAuth, Addr1, order.Remain)
 	if err != nil {
 		t.Error("mint token err:", err)
 	}
@@ -147,7 +148,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// approve must be done by the user before create an order
 	t.Log("user approving..")
-	tx, err = tokenIns.Approve(txAuth, contractAddr, order.Deposit)
+	tx, err = tokenIns.Approve(txAuth, contractAddr, order.Remain)
 	if err != nil {
 		t.Error(err)
 	}
@@ -180,7 +181,7 @@ func TestCreateOrder(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("market balance after create order:", b.String())
-	if b.Cmp(order.Deposit) != 0 {
+	if b.Cmp(order.Remain) != 0 {
 		t.Error("the balance of market contract is error")
 	}
 }
@@ -210,8 +211,8 @@ func TestGetOrder(t *testing.T) {
 	if orderInfo.R.NCPU != 1 {
 		t.Error("ncpu error")
 	}
-	dep, _ := new(big.Int).SetString("10000000000000000", 10)
-	if orderInfo.Deposit.Cmp(dep) != 0 {
+	remain, _ := new(big.Int).SetString("10000000000000000", 10)
+	if orderInfo.Remain.Cmp(remain) != 0 {
 		t.Error("deposit erro")
 	}
 	if orderInfo.UserConfirm != false {
@@ -372,6 +373,69 @@ func TestUserWithdraw(t *testing.T) {
 		t.Error("get balance of user error")
 	}
 	t.Log("new user balance:", newBal)
+}
+
+// test provider withdraw from remuneration
+func TestProWithdraw(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := comm.ConnETH(endpoint)
+	t.Log("chain id:", chainID)
+
+	// get token instance
+	tokenIns, err := gtoken.NewGToken(tokenAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// get old provider token
+	oldBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error("get provider balance failed:", err)
+	}
+	t.Log("provider old balance:", oldBal)
+
+	// get contract instance
+	contractIns, err := market.NewMarket(contractAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// make auth for sending transaction
+	txAuth, err := comm.MakeAuth(chainID, sk2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// withdraw some token
+	amount, ok := new(big.Int).SetString("1000000000000000", 10)
+	if !ok {
+		t.Error("set string error")
+	}
+	// provider call activate with user as param
+	t.Log("provider withdraw")
+	tx, err := contractIns.ProWithdraw(txAuth, tokenAddr, Addr1, amount)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("waiting for tx to be ok")
+	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Error("user withdraw err:", err)
+	}
+
+	// get order
+	orderInfo, err := contractIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("order info:", orderInfo)
+
+	// check new provider token balance
+	newBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr2}, Addr2)
+	if err != nil {
+		t.Error("get balance of provider error")
+	}
+	t.Log("new provider balance:", newBal)
 }
 
 /*
