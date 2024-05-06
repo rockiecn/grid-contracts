@@ -34,8 +34,11 @@ contract Market {
         PricePerHour p;
         Resources r;
 
-        // the token user paid for this order
-        uint256 deposit;
+        // the total value user paid for this order
+        uint256 totalValue;
+
+        // the remained value in this order
+        uint256 remain;
         // the current profit for provider
         uint256 remuneration;
 
@@ -65,7 +68,7 @@ contract Market {
      */
     function createOrder(address tokenAddr, address provider, Order memory order) public {
         // transfer token to market contract
-        IERC20(tokenAddr).transferFrom(msg.sender, address(this), order.deposit);
+        IERC20(tokenAddr).transferFrom(msg.sender, address(this), order.totalValue);
 
         // store order
         orders[msg.sender][provider]=order;
@@ -152,21 +155,21 @@ contract Market {
         uint256 total = nowTime - _order.activateTime;
 
         // unit fee per second for an order
-        uint256 unitFee = _order.deposit/_order.duration;
+        uint256 unitFee = _order.totalValue/_order.duration;
         // the service fee for this time
         uint256 settleFee;
 
         // check if order is time up
         bool timeup = false;
         if (total >= _order.duration) {
-            settleFee = _order.deposit;
+            settleFee = _order.remain;
             timeup = true;
         } else {
             settleFee = unitFee * elapsed;
         }
 
         // update order info
-        orders[user][provider].deposit -= settleFee;
+        orders[user][provider].remain -= settleFee;
         orders[user][provider].remuneration += settleFee;
         orders[user][provider].lastSettleTime = nowTime;
 
@@ -181,11 +184,23 @@ contract Market {
         Order memory _order = orders[msg.sender][provider];
 
         require(_order.user == msg.sender,"caller must be the user");
-        require(amount <= _order.deposit,"the amount should not larger than depost");
+        require(amount <= _order.remain,"the amount should not larger than remain");
 
         // transfer token to the user
         IERC20(tokenAddr).transfer(msg.sender, amount);
-        orders[msg.sender][provider].deposit -= amount;
+        orders[msg.sender][provider].remain -= amount;
+    }
+
+    // provider withdraw some token in an order
+    function proWithdraw(address tokenAddr, address user, uint256 amount) public {
+        Order memory _order = orders[user][msg.sender];
+
+        require(_order.provider == msg.sender,"caller must be the provider");
+        require(amount <= _order.remuneration,"the amount should not larger than remuneration");
+
+        // transfer token to the provider
+        IERC20(tokenAddr).transfer(msg.sender, amount);
+        orders[user][msg.sender].remuneration -= amount;
     }
 
     
