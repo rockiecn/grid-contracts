@@ -39,7 +39,7 @@ func main() {
 	}
 
 	// deploy Token contract
-	tokenAddr, tx, tokenIns, err := gtoken.DeployGToken(txAuth, client)
+	tokenAddr, tx, tokenIns, err := gtoken.DeployGtoken(txAuth, client)
 	if err != nil {
 		log.Fatal("deploy token err:", err)
 	}

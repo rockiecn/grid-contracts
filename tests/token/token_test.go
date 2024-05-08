@@ -40,7 +40,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	// deploy Token contract
-	_tokenAddr, tx, _, err := gtoken.DeployGToken(txAuth, client)
+	_tokenAddr, tx, _, err := gtoken.DeployGtoken(txAuth, client)
 	if err != nil {
 		t.Error("deploy token err:", err)
 	}
@@ -66,7 +66,7 @@ func TestMint(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get token instance
-	tokenIns, err := gtoken.NewGToken(tokenAddr, backend)
+	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
 	if err != nil {
 		t.Error("new token instance failed:", err)
 	}
@@ -121,7 +121,7 @@ func TestTransfer(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get token instance
-	tokenIns, err := gtoken.NewGToken(tokenAddr, backend)
+	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
 	if err != nil {
 		t.Error("new token instance failed:", err)
 	}

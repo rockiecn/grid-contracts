@@ -31,7 +31,7 @@ var (
 	// erc20 token address
 	tokenAddr common.Address
 	// market contract addr
-	contractAddr common.Address
+	marketAddr common.Address
 )
 
 func TestDeploy(t *testing.T) {
@@ -48,12 +48,12 @@ func TestDeploy(t *testing.T) {
 	}
 
 	// deploy market contract
-	_contractAddr, tx, _, err := market.DeployMarket(txAuth, backend)
+	_marketAddr, tx, _, err := market.DeployMarket(txAuth, backend)
 	if err != nil {
 		t.Error("deploy registry err:", err)
 	}
-	contractAddr = _contractAddr
-	t.Log("created registry address: ", contractAddr.Hex())
+	marketAddr = _marketAddr
+	t.Log("created registry address: ", marketAddr.Hex())
 	t.Log("waiting for tx to be ok")
 	err = comm.CheckTx(endpoint, tx.Hash(), "")
 	if err != nil {
@@ -71,7 +71,7 @@ func TestCreateOrder(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	contractIns, err := market.NewMarket(contractAddr, backend)
+	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -84,7 +84,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// deploy token contract
 	t.Log("deploy token contract")
-	_tokenAddr, tx, tokenIns, err := gtoken.DeployGToken(txAuth, backend)
+	_tokenAddr, tx, tokenIns, err := gtoken.DeployGtoken(txAuth, backend)
 	if err != nil {
 		t.Error("deploy token err:", err)
 	}
@@ -136,7 +136,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// mint some token for approve
 	t.Log("mint token to user")
-	tx, err = tokenIns.Mint(txAuth, Addr1, order.Remain)
+	tx, err = tokenIns.Mint(txAuth, Addr1, order.TotalValue)
 	if err != nil {
 		t.Error("mint token err:", err)
 	}
@@ -148,7 +148,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// approve must be done by the user before create an order
 	t.Log("user approving..")
-	tx, err = tokenIns.Approve(txAuth, contractAddr, order.Remain)
+	tx, err = tokenIns.Approve(txAuth, marketAddr, order.TotalValue)
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,7 +161,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// create order
 	t.Log("call create order")
-	tx, err = contractIns.CreateOrder(txAuth, tokenAddr, Addr2, order)
+	tx, err = marketIns.CreateOrder(txAuth, tokenAddr, Addr2, order)
 	if err != nil {
 		t.Error(err)
 	}
@@ -176,7 +176,7 @@ func TestCreateOrder(t *testing.T) {
 	t.Log("gas used:", receipt.GasUsed)
 
 	// check balance of market contract after create order
-	b, err := tokenIns.BalanceOf(&bind.CallOpts{}, contractAddr)
+	b, err := tokenIns.BalanceOf(&bind.CallOpts{}, marketAddr)
 	if err != nil {
 		t.Error(err)
 	}
@@ -192,13 +192,13 @@ func TestGetOrder(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get market instance
-	contractIns, err := market.NewMarket(contractAddr, backend)
+	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
 	// call
-	orderInfo, err := contractIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -233,7 +233,7 @@ func TestActivate(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	contractIns, err := market.NewMarket(contractAddr, backend)
+	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -246,7 +246,7 @@ func TestActivate(t *testing.T) {
 
 	// provider call activate with user as param
 	t.Log("provider activate an order")
-	tx, err := contractIns.Activate(txAuth, Addr1)
+	tx, err := marketIns.Activate(txAuth, Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -258,7 +258,7 @@ func TestActivate(t *testing.T) {
 	}
 
 	// get order
-	orderInfo, err := contractIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -277,7 +277,7 @@ func TestCancel(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	contractIns, err := market.NewMarket(contractAddr, backend)
+	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -290,7 +290,7 @@ func TestCancel(t *testing.T) {
 
 	// provider call activate with user as param
 	t.Log("user cancels an order")
-	tx, err := contractIns.UserCancel(txAuth, Addr2)
+	tx, err := marketIns.UserCancel(txAuth, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -301,7 +301,7 @@ func TestCancel(t *testing.T) {
 	}
 
 	// get order
-	orderInfo, err := contractIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -319,7 +319,7 @@ func TestUserWithdraw(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get token instance
-	tokenIns, err := gtoken.NewGToken(tokenAddr, backend)
+	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -332,7 +332,7 @@ func TestUserWithdraw(t *testing.T) {
 	t.Log("user old balance:", oldBal)
 
 	// get contract instance
-	contractIns, err := market.NewMarket(contractAddr, backend)
+	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -350,7 +350,7 @@ func TestUserWithdraw(t *testing.T) {
 	}
 	// provider call activate with user as param
 	t.Log("user withdraw")
-	tx, err := contractIns.UserWithdraw(txAuth, tokenAddr, Addr2, amount)
+	tx, err := marketIns.UserWithdraw(txAuth, tokenAddr, Addr2, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -361,11 +361,22 @@ func TestUserWithdraw(t *testing.T) {
 	}
 
 	// get order
-	orderInfo, err := contractIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("order info:", orderInfo)
+
+	// check remain value
+	re, ok := new(big.Int).SetString("6000000000000000", 10)
+	if !ok {
+		t.Error("set string error")
+	}
+	if orderInfo.Remain.Cmp(re) != 0 {
+		if err != nil {
+			t.Error("remain value error")
+		}
+	}
 
 	// check new user token balance
 	newBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
@@ -373,6 +384,18 @@ func TestUserWithdraw(t *testing.T) {
 		t.Error("get balance of user error")
 	}
 	t.Log("new user balance:", newBal)
+
+	// check balance
+	b, ok := new(big.Int).SetString("3000000000000000", 10)
+	if !ok {
+		t.Error("set string error")
+	}
+	if newBal.Cmp(b) != 0 {
+		if err != nil {
+			t.Error("user balance error")
+		}
+	}
+
 }
 
 // test provider withdraw from remuneration
@@ -382,7 +405,7 @@ func TestProWithdraw(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get token instance
-	tokenIns, err := gtoken.NewGToken(tokenAddr, backend)
+	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -395,7 +418,7 @@ func TestProWithdraw(t *testing.T) {
 	t.Log("provider old balance:", oldBal)
 
 	// get contract instance
-	contractIns, err := market.NewMarket(contractAddr, backend)
+	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -413,7 +436,7 @@ func TestProWithdraw(t *testing.T) {
 	}
 	// provider call activate with user as param
 	t.Log("provider withdraw")
-	tx, err := contractIns.ProWithdraw(txAuth, tokenAddr, Addr1, amount)
+	tx, err := marketIns.ProWithdraw(txAuth, tokenAddr, Addr1, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -424,11 +447,22 @@ func TestProWithdraw(t *testing.T) {
 	}
 
 	// get order
-	orderInfo, err := contractIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("order info:", orderInfo)
+
+	// check remuneration value
+	remu, ok := new(big.Int).SetString("0", 10)
+	if !ok {
+		t.Error("set string error")
+	}
+	if orderInfo.Remuneration.Cmp(remu) != 0 {
+		if err != nil {
+			t.Error("remuneration value error")
+		}
+	}
 
 	// check new provider token balance
 	newBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr2}, Addr2)
@@ -436,6 +470,17 @@ func TestProWithdraw(t *testing.T) {
 		t.Error("get balance of provider error")
 	}
 	t.Log("new provider balance:", newBal)
+
+	// check balance
+	b, ok := new(big.Int).SetString("1000000000000000", 10)
+	if !ok {
+		t.Error("set string error")
+	}
+	if newBal.Cmp(b) != 0 {
+		if err != nil {
+			t.Error("provider balance error")
+		}
+	}
 }
 
 /*
@@ -446,7 +491,7 @@ func TestSettle(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	contractIns, err := market.NewMarket(contractAddr, backend)
+	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
@@ -458,7 +503,7 @@ func TestSettle(t *testing.T) {
 	}
 
 	// get order
-	orderInfo, err := contractIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -466,7 +511,7 @@ func TestSettle(t *testing.T) {
 
 	// call settle
 	t.Log("settle an order")
-	tx, err := contractIns.Settle(txAuth, Addr1, Addr2, orderInfo.LastSettleTime.Add(orderInfo.LastSettleTime, new(big.Int).SetUint64(10)))
+	tx, err := marketIns.Settle(txAuth, Addr1, Addr2, orderInfo.LastSettleTime.Add(orderInfo.LastSettleTime, new(big.Int).SetUint64(10)))
 	if err != nil {
 		t.Error(err)
 	}

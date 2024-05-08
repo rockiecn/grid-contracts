@@ -2,7 +2,7 @@
 
 pragma solidity >=0.8.2 <0.9.0;
 
-import "./openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @title Market
@@ -202,7 +202,4 @@ contract Market {
         IERC20(tokenAddr).transfer(msg.sender, amount);
         orders[user][msg.sender].remuneration -= amount;
     }
-
-    
-
 }
