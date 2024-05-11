@@ -63,38 +63,42 @@ contract Market {
     // record all orders for every user/provider pair
     mapping(address => mapping(address => Order)) orders;
 
+    // constructor
+    constructor() {
+    }
+
     /**
      * @dev user create an order with a provider， user approve must be called previously
      */
-    function createOrder(address tokenAddr, address provider, Order memory order) public {
+    function createOrder(address tokenAddr, address provider, Order memory order) external {
         // transfer token to market contract
         IERC20(tokenAddr).transferFrom(msg.sender, address(this), order.totalValue);
 
         // store order
-        orders[msg.sender][provider]=order;
+        orders[msg.sender][provider] = order;
     }
 
     /**
      * @dev get the order info with a provider
      */
-    function getOrder(address provider) public view returns(Order memory) {
+    function getOrder(address provider) external view returns(Order memory) {
         return orders[msg.sender][provider];
     }
 
     // calc the fee of an order
-    function feeOrder(Order memory order) public view returns(uint256) {
+    function feeOrder(Order memory order) external view returns(uint256) {
 
     }
 
     // set the status of an order, only called by contract
-    function setStat(address user, address provider, uint8 status) private {
+    function _setStat(address user, address provider, uint8 status) internal {
         require((status==0 || status==1 || status==2 || status==3),"wrong status value");
 
-        orders[user][provider].status=status;
+        orders[user][provider].status = status;
     }
 
     // activate an order, called by the provider
-    function activate(address user) public {
+    function activate(address user) external {
         Order memory _order = orders[user][msg.sender];
 
         // only be called by the order's provider
@@ -108,7 +112,7 @@ contract Market {
     }
 
     // the user cancel the order
-    function userCancel(address provider) public {
+    function userCancel(address provider) external {
         Order memory _order = orders[msg.sender][provider];
 
         require(_order.user == msg.sender,"the caller not order's user");
@@ -122,7 +126,7 @@ contract Market {
     }
 
     // the provider cancel the order
-    function providerCancel(address user) public {
+    function providerCancel(address user) external {
         Order memory _order = orders[user][msg.sender];
 
         require(_order.user == user,"the user is error");
@@ -137,7 +141,7 @@ contract Market {
 
 
     // settle fee for an order, up to the settleTime
-    function _settle(address user, address provider) private {
+    function _settle(address user, address provider) internal {
         Order memory _order = orders[user][provider];
 
         // current timestamp
@@ -180,7 +184,7 @@ contract Market {
     }
 
     // user withdraw some token in an order
-    function userWithdraw(address tokenAddr, address provider, uint256 amount) public {
+    function userWithdraw(address tokenAddr, address provider, uint256 amount) external {
         Order memory _order = orders[msg.sender][provider];
 
         require(_order.user == msg.sender,"caller must be the user");
@@ -192,7 +196,7 @@ contract Market {
     }
 
     // provider withdraw some token in an order
-    function proWithdraw(address tokenAddr, address user, uint256 amount) public {
+    function proWithdraw(address tokenAddr, address user, uint256 amount) external {
         Order memory _order = orders[user][msg.sender];
 
         require(_order.provider == msg.sender,"caller must be the provider");

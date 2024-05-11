@@ -11,7 +11,9 @@
 solc --base-path . --include-path .. ../contracts/impl/GToken.sol --bin --abi -o ../abi/GToken --overwrite
 solc --base-path . --include-path .. ../contracts/impl/Registry.sol --bin --abi -o ../abi/Registry --overwrite
 solc --base-path . --include-path .. ../contracts/impl/Market.sol --bin --abi -o ../abi/Market --overwrite
+solc --base-path . --include-path .. ../contracts/impl/Pledge.sol --bin --abi -o ../abi/Pledge --overwrite
 
 abigen --out ../go/gtoken/gtoken.go --pkg gtoken --bin ../abi/GToken/GToken.bin --abi ../abi/GToken/GToken.abi
 abigen --out ../go/registry/registry.go --pkg registry --bin ../abi/Registry/Registry.bin --abi ../abi/Registry/Registry.abi
 abigen --out ../go/market/market.go --pkg market --bin ../abi/Market/Market.bin --abi ../abi/Market/Market.abi
+abigen --out ../go/pledge/pledge.go --pkg pledge --bin ../abi/Pledge/Pledge.bin --abi ../abi/Pledge/Pledge.abi

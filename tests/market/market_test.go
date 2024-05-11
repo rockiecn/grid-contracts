@@ -53,7 +53,7 @@ func TestDeploy(t *testing.T) {
 		t.Error("deploy registry err:", err)
 	}
 	marketAddr = _marketAddr
-	t.Log("created registry address: ", marketAddr.Hex())
+	t.Log("created market address: ", marketAddr.Hex())
 	t.Log("waiting for tx to be ok")
 	err = comm.CheckTx(endpoint, tx.Hash(), "")
 	if err != nil {
