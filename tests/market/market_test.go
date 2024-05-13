@@ -271,7 +271,7 @@ func TestActivate(t *testing.T) {
 }
 
 // test user cancel order
-func TestCancel(t *testing.T) {
+func TestUserCancel(t *testing.T) {
 	// connect to an eth node with ep
 	backend, chainID := comm.ConnETH(endpoint)
 	t.Log("chain id:", chainID)
@@ -279,8 +279,21 @@ func TestCancel(t *testing.T) {
 	// get contract instance
 	marketIns, err := market.NewMarket(marketAddr, backend)
 	if err != nil {
-		t.Error("new contract instance failed:", err)
+		t.Error("new market instance failed:", err)
 	}
+
+	// get token instance
+	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
+	if err != nil {
+		t.Error("new token instance failed:", err)
+	}
+
+	// get balance of user before cancel order
+	oldBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("old balance of user:", oldBal)
 
 	// make auth for sending transaction
 	txAuth, err := comm.MakeAuth(chainID, sk1)
@@ -288,9 +301,9 @@ func TestCancel(t *testing.T) {
 		t.Error(err)
 	}
 
-	// provider call activate with user as param
+	// user cancel order, remain value is refunded to user
 	t.Log("user cancels an order")
-	tx, err := marketIns.UserCancel(txAuth, Addr2)
+	tx, err := marketIns.UserCancel(txAuth, tokenAddr, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -300,7 +313,7 @@ func TestCancel(t *testing.T) {
 		t.Error("deploy contract err:", err)
 	}
 
-	// get order
+	// check status
 	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
 	if err != nil {
 		t.Error(err)
@@ -310,90 +323,25 @@ func TestCancel(t *testing.T) {
 	if orderInfo.Status != 2 {
 		t.Error("cancel failed, status not 2")
 	}
-}
 
-// test user withdraw
-func TestUserWithdraw(t *testing.T) {
-	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
-	t.Log("chain id:", chainID)
-
-	// get token instance
-	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
-	if err != nil {
-		t.Error("new contract instance failed:", err)
+	t.Log("new remain value:", orderInfo.Remain)
+	// check remain after order cancelled
+	if orderInfo.Remain.Cmp(new(big.Int).SetUint64(0)) != 0 {
+		t.Error("the remain token in this order must be 0 after cancelled")
 	}
 
-	// get old user token
-	oldBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
-	if err != nil {
-		t.Error("get user balance failed:", err)
-	}
-	t.Log("user old balance:", oldBal)
-
-	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
-	if err != nil {
-		t.Error("new contract instance failed:", err)
-	}
-
-	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// withdraw some token
-	amount, ok := new(big.Int).SetString("3000000000000000", 10)
-	if !ok {
-		t.Error("set string error")
-	}
-	// provider call activate with user as param
-	t.Log("user withdraw")
-	tx, err := marketIns.UserWithdraw(txAuth, tokenAddr, Addr2, amount)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error("user withdraw err:", err)
-	}
-
-	// get order
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("order info:", orderInfo)
-
-	// check remain value
-	re, ok := new(big.Int).SetString("6000000000000000", 10)
-	if !ok {
-		t.Error("set string error")
-	}
-	if orderInfo.Remain.Cmp(re) != 0 {
-		if err != nil {
-			t.Error("remain value error")
-		}
-	}
-
-	// check new user token balance
+	// check user token balance
 	newBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
 	if err != nil {
-		t.Error("get balance of user error")
+		t.Error(err)
 	}
-	t.Log("new user balance:", newBal)
+	t.Log("new balance of user:", newBal)
 
-	// check balance
-	b, ok := new(big.Int).SetString("3000000000000000", 10)
-	if !ok {
-		t.Error("set string error")
-	}
-	if newBal.Cmp(b) != 0 {
-		if err != nil {
-			t.Error("user balance error")
-		}
+	// the remain value after settled
+	remain, _ := new(big.Int).SetString("9000000000000000", 10)
+	incre := newBal.Sub(newBal, oldBal)
+	if incre.Cmp(remain) != 0 {
+		t.Error("the increment of user balance is error, should equal to order remain value")
 	}
 
 }

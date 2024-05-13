@@ -112,7 +112,8 @@ contract Market {
     }
 
     // the user cancel the order
-    function userCancel(address provider) external {
+    // refund credit in this order is needed
+    function userCancel(address tokenAddr, address provider) external {
         Order memory _order = orders[msg.sender][provider];
 
         require(_order.user == msg.sender,"the caller not order's user");
@@ -121,8 +122,16 @@ contract Market {
         // call settle before cancel
         _settle(msg.sender,provider);
 
-        // 2-cancelled
+        // get the new order info after settled
+        _order = orders[msg.sender][provider];
+
+        // set status to cancelled
         orders[msg.sender][provider].status = 2;
+
+        // transfer remained token to the user
+        IERC20(tokenAddr).transfer(msg.sender, _order.remain);
+        // no token remained in order
+        orders[msg.sender][provider].remain = 0;
     }
 
     // the provider cancel the order
@@ -182,19 +191,7 @@ contract Market {
             orders[user][provider].status = 3;
         }
     }
-
-    // user withdraw some token in an order
-    function userWithdraw(address tokenAddr, address provider, uint256 amount) external {
-        Order memory _order = orders[msg.sender][provider];
-
-        require(_order.user == msg.sender,"caller must be the user");
-        require(amount <= _order.remain,"the amount should not larger than remain");
-
-        // transfer token to the user
-        IERC20(tokenAddr).transfer(msg.sender, amount);
-        orders[msg.sender][provider].remain -= amount;
-    }
-
+    
     // provider withdraw some token in an order
     function proWithdraw(address tokenAddr, address user, uint256 amount) external {
         Order memory _order = orders[user][msg.sender];
