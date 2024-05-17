@@ -4,6 +4,8 @@ pragma solidity ^0.8.0;
 import "../openzeppelin/contracts/access/Ownable.sol";
 import "../openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../openzeppelin/contracts/utils/math/Math.sol";
+import "../interfaces/ICredit.sol";
+
 
 contract Swap is Ownable {
     using Math for uint256;
@@ -65,12 +67,10 @@ contract Swap is Ownable {
 
         // check credit balance in swap
         uint256 creditAmount = _tokenAmount.mulDiv(rate_denominator, rate_numerator);
-        uint256 creditBal = IERC20(creditAddr).balanceOf(address(this));
-        require(creditAmount <= creditBal, "not enough credit in swap");
 
-        ok = IERC20(creditAddr).transfer(msg.sender, creditAmount);
-        require(ok, "transfer failed");
-
+        // mint to user directly
+        ICredit(creditAddr).mint(msg.sender,creditAmount);
+       
         emit Sold(msg.sender, _tokenAmount);
     }
 
