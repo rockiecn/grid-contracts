@@ -9,7 +9,8 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	comm "github.com/grid/contracts/common"
-	"github.com/grid/contracts/go/gtoken"
+	"github.com/grid/contracts/go/access"
+	"github.com/grid/contracts/go/credit"
 	"github.com/grid/contracts/go/market"
 )
 
@@ -28,8 +29,10 @@ var (
 	sk1 string = "c1e763d955e6aea410e40b95702108a30efb4d25b32d419910fe2ac611c2229d"
 	sk2 string = "e8cda8fe7c04afa4a0630af457972f88a645468cb90120a11911669deac5e96e"
 
-	// erc20 token address
-	tokenAddr common.Address
+	// access contract address
+	accessAddr common.Address
+	// credit contract address
+	creditAddr common.Address
 	// market contract addr
 	marketAddr common.Address
 )
@@ -82,14 +85,39 @@ func TestCreateOrder(t *testing.T) {
 		t.Error(err)
 	}
 
-	// deploy token contract
-	t.Log("deploy token contract")
-	_tokenAddr, tx, tokenIns, err := gtoken.DeployGtoken(txAuth, backend)
+	// deploy access contract
+	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, backend)
 	if err != nil {
-		t.Error("deploy token err:", err)
+		t.Error("deploy access err:", err)
 	}
-	tokenAddr = _tokenAddr
-	t.Log("token address:", tokenAddr)
+	accessAddr = _accessAddr
+	t.Log("created access address: ", accessAddr.Hex())
+	t.Log("waiting for tx to be ok")
+	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Error("deploy contract err:", err)
+	}
+
+	// set access for admin
+	t.Log("set access for admin")
+	tx, err = accessIns.Set(txAuth, Addr1, true)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("waiting for tx to be ok")
+	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Error(err)
+	}
+
+	// deploy credit contract
+	t.Log("deploy credit contract")
+	_creditAddr, tx, creditIns, err := credit.DeployCredit(txAuth, backend, accessAddr)
+	if err != nil {
+		t.Error("deploy credit err:", err)
+	}
+	creditAddr = _creditAddr
+	t.Log("credit address:", creditAddr)
 	t.Log("waiting for tx to be ok")
 	err = comm.CheckTx(endpoint, tx.Hash(), "")
 	if err != nil {
@@ -134,11 +162,11 @@ func TestCreateOrder(t *testing.T) {
 		Status:          0, // unactive
 	}
 
-	// mint some token for approve
-	t.Log("mint token to user")
-	tx, err = tokenIns.Mint(txAuth, Addr1, order.TotalValue)
+	// mint some credit for approve
+	t.Log("mint credit to user")
+	tx, err = creditIns.Mint(txAuth, Addr1, order.TotalValue)
 	if err != nil {
-		t.Error("mint token err:", err)
+		t.Error("mint credit err:", err)
 	}
 	t.Log("waiting for tx to be ok")
 	err = comm.CheckTx(endpoint, tx.Hash(), "")
@@ -147,8 +175,8 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	// approve must be done by the user before create an order
-	t.Log("user approving..")
-	tx, err = tokenIns.Approve(txAuth, marketAddr, order.TotalValue)
+	t.Log("user approving credit to market..")
+	tx, err = creditIns.Approve(txAuth, marketAddr, order.TotalValue)
 	if err != nil {
 		t.Error(err)
 	}
@@ -161,7 +189,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// create order
 	t.Log("call create order")
-	tx, err = marketIns.CreateOrder(txAuth, tokenAddr, Addr2, order)
+	tx, err = marketIns.CreateOrder(txAuth, creditAddr, Addr2, order)
 	if err != nil {
 		t.Error(err)
 	}
@@ -175,14 +203,14 @@ func TestCreateOrder(t *testing.T) {
 	receipt := comm.GetTransactionReceipt(endpoint, tx.Hash())
 	t.Log("gas used:", receipt.GasUsed)
 
-	// check balance of market contract after create order
-	b, err := tokenIns.BalanceOf(&bind.CallOpts{}, marketAddr)
+	// check credit balance of market contract after create order
+	b, err := creditIns.BalanceOf(&bind.CallOpts{}, marketAddr)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("market balance after create order:", b.String())
 	if b.Cmp(order.Remain) != 0 {
-		t.Error("the balance of market contract is error")
+		t.Error("the balance of market contract is incorrect")
 	}
 }
 
@@ -282,14 +310,14 @@ func TestUserCancel(t *testing.T) {
 		t.Error("new market instance failed:", err)
 	}
 
-	// get token instance
-	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
+	// get credit instance
+	creditIns, err := credit.NewCredit(creditAddr, backend)
 	if err != nil {
 		t.Error("new token instance failed:", err)
 	}
 
 	// get balance of user before cancel order
-	oldBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
+	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -303,7 +331,7 @@ func TestUserCancel(t *testing.T) {
 
 	// user cancel order, remain value is refunded to user
 	t.Log("user cancels an order")
-	tx, err := marketIns.UserCancel(txAuth, tokenAddr, Addr2)
+	tx, err := marketIns.UserCancel(txAuth, creditAddr, Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -331,7 +359,7 @@ func TestUserCancel(t *testing.T) {
 	}
 
 	// check user token balance
-	newBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
+	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -353,13 +381,13 @@ func TestProWithdraw(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// get token instance
-	tokenIns, err := gtoken.NewGtoken(tokenAddr, backend)
+	creditIns, err := credit.NewCredit(creditAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
-	// get old provider token
-	oldBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr2)
+	// get old provider crecit
+	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{}, Addr2)
 	if err != nil {
 		t.Error("get provider balance failed:", err)
 	}
@@ -384,7 +412,7 @@ func TestProWithdraw(t *testing.T) {
 	}
 	// provider call activate with user as param
 	t.Log("provider withdraw")
-	tx, err := marketIns.ProWithdraw(txAuth, tokenAddr, Addr1, amount)
+	tx, err := marketIns.ProWithdraw(txAuth, creditAddr, Addr1, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -412,10 +440,10 @@ func TestProWithdraw(t *testing.T) {
 		}
 	}
 
-	// check new provider token balance
-	newBal, err := tokenIns.BalanceOf(&bind.CallOpts{From: Addr2}, Addr2)
+	// check new provider credit balance
+	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr2}, Addr2)
 	if err != nil {
-		t.Error("get balance of provider error")
+		t.Error("get credit balance of provider error")
 	}
 	t.Log("new provider balance:", newBal)
 

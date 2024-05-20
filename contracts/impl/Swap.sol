@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 import "../openzeppelin/contracts/access/Ownable.sol";
-import "../openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../openzeppelin/contracts/utils/math/Math.sol";
 import "../interfaces/ICredit.sol";
+import "../interfaces/IGtoken.sol";
 
 
 contract Swap is Ownable {
@@ -36,18 +36,18 @@ contract Swap is Ownable {
         require(_creditAmount > 0, "credit amount must larger than 0");
 
         // check allowance, approve credit to swap must be called first
-        uint256 allowance = IERC20(creditAddr).allowance(msg.sender, address(this));
+        uint256 allowance = ICredit(creditAddr).allowance(msg.sender, address(this));
         require(allowance >= _creditAmount);
         // transfer credit to swap
-        bool ok = IERC20(creditAddr).transferFrom(msg.sender, address(this), _creditAmount);
+        bool ok = ICredit(creditAddr).transferFrom(msg.sender, address(this), _creditAmount);
         require(ok, "TransferFrom fail");
 
         // check gtoken balance in swap contract
-        uint256 tokenBal = IERC20(gtokenAddr).balanceOf(address(this));
+        uint256 tokenBal = IGtoken(gtokenAddr).balanceOf(address(this));
         uint256 tokenAmount = _creditAmount.mulDiv(rate_numerator, rate_denominator);
         require(tokenAmount <= tokenBal, "not enough token in swap contract to buy");
         // swap transfer gtoken to sender
-        ok = IERC20(gtokenAddr).transfer(msg.sender, tokenAmount);
+        ok = IGtoken(gtokenAddr).transfer(msg.sender, tokenAmount);
         require(ok, "Transfer fail");
 
         emit Bought(msg.sender, _creditAmount);
@@ -59,10 +59,10 @@ contract Swap is Ownable {
         require(_tokenAmount>0, "You need to sell at least some tokens");
 
         // approve to swap in token must be called first
-        uint256 allowance = IERC20(gtokenAddr).allowance(msg.sender, address(this));
+        uint256 allowance = IGtoken(gtokenAddr).allowance(msg.sender, address(this));
         require(allowance >= _tokenAmount, "Check the token allowance");
         // transfer token to swap
-        bool ok = IERC20(gtokenAddr).transferFrom(msg.sender, address(this), _tokenAmount);
+        bool ok = IGtoken(gtokenAddr).transferFrom(msg.sender, address(this), _tokenAmount);
         require(ok, "transferFrom failed");
 
         // check credit balance in swap
@@ -76,9 +76,9 @@ contract Swap is Ownable {
 
     // send remaining token to owner
     function settlementToken() public onlyOwner {
-        uint256 tokenBal = IERC20(gtokenAddr).balanceOf(address(this));
+        uint256 tokenBal = IGtoken(gtokenAddr).balanceOf(address(this));
         if(tokenBal>0){
-            require(IERC20(gtokenAddr).transfer(owner(), tokenBal), "Transfer fail");
+            require(IGtoken(gtokenAddr).transfer(owner(), tokenBal), "Transfer fail");
         }
     }
 }

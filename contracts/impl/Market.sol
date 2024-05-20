@@ -2,7 +2,7 @@
 
 pragma solidity >=0.8.2 <0.9.0;
 
-import "../openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../interfaces/ICredit.sol";
 
 /**
  * @title Market
@@ -72,7 +72,7 @@ contract Market {
      */
     function createOrder(address tokenAddr, address provider, Order memory order) external {
         // transfer token to market contract
-        IERC20(tokenAddr).transferFrom(msg.sender, address(this), order.totalValue);
+        ICredit(tokenAddr).transferFrom(msg.sender, address(this), order.totalValue);
 
         // store order
         orders[msg.sender][provider] = order;
@@ -129,7 +129,7 @@ contract Market {
         orders[msg.sender][provider].status = 2;
 
         // transfer remained token to the user
-        IERC20(tokenAddr).transfer(msg.sender, _order.remain);
+        ICredit(tokenAddr).transfer(msg.sender, _order.remain);
         // no token remained in order
         orders[msg.sender][provider].remain = 0;
     }
@@ -191,7 +191,7 @@ contract Market {
             orders[user][provider].status = 3;
         }
     }
-    
+
     // provider withdraw some token in an order
     function proWithdraw(address tokenAddr, address user, uint256 amount) external {
         Order memory _order = orders[user][msg.sender];
@@ -200,7 +200,7 @@ contract Market {
         require(amount <= _order.remuneration,"the amount should not larger than remuneration");
 
         // transfer token to the provider
-        IERC20(tokenAddr).transfer(msg.sender, amount);
+        ICredit(tokenAddr).transfer(msg.sender, amount);
         orders[user][msg.sender].remuneration -= amount;
     }
 }
