@@ -70,9 +70,9 @@ contract Market {
     /**
      * @dev user create an order with a provider， user approve must be called previously
      */
-    function createOrder(address tokenAddr, address provider, Order memory order) external {
+    function createOrder(address creditAddr, address provider, Order memory order) external {
         // transfer token to market contract
-        ICredit(tokenAddr).transferFrom(msg.sender, address(this), order.totalValue);
+        ICredit(creditAddr).transferFrom(msg.sender, address(this), order.totalValue);
 
         // store order
         orders[msg.sender][provider] = order;
@@ -113,7 +113,7 @@ contract Market {
 
     // the user cancel the order
     // refund credit in this order is needed
-    function userCancel(address tokenAddr, address provider) external {
+    function userCancel(address creditAddr, address provider) external {
         Order memory _order = orders[msg.sender][provider];
 
         require(_order.user == msg.sender,"the caller not order's user");
@@ -129,7 +129,7 @@ contract Market {
         orders[msg.sender][provider].status = 2;
 
         // transfer remained token to the user
-        ICredit(tokenAddr).transfer(msg.sender, _order.remain);
+        ICredit(creditAddr).transfer(msg.sender, _order.remain);
         // no token remained in order
         orders[msg.sender][provider].remain = 0;
     }
@@ -154,8 +154,7 @@ contract Market {
         Order memory _order = orders[user][provider];
 
         // current timestamp
-        //uint256 nowTime = block.timestamp;
-        uint256 nowTime = _order.lastSettleTime+10;// for test
+        uint256 nowTime = block.timestamp;
 
         require(_order.status==1,"order must be in activate status to settle");
         require(nowTime >= _order.lastSettleTime);
@@ -192,15 +191,20 @@ contract Market {
         }
     }
 
+    // provider settle the fee for an order, called by provider
+    function proSettle(address user) external {
+        _settle(user, msg.sender);
+    }
+
     // provider withdraw some token in an order
-    function proWithdraw(address tokenAddr, address user, uint256 amount) external {
+    function proWithdraw(address creditAddr, address user, uint256 amount) external {
         Order memory _order = orders[user][msg.sender];
 
         require(_order.provider == msg.sender,"caller must be the provider");
         require(amount <= _order.remuneration,"the amount should not larger than remuneration");
 
         // transfer token to the provider
-        ICredit(tokenAddr).transfer(msg.sender, amount);
+        ICredit(creditAddr).transfer(msg.sender, amount);
         orders[user][msg.sender].remuneration -= amount;
     }
 }

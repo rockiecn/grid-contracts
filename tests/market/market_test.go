@@ -298,6 +298,156 @@ func TestActivate(t *testing.T) {
 	}
 }
 
+// test provider settle
+func TestProSettle(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := comm.ConnETH(endpoint)
+	t.Log("chain id:", chainID)
+
+	// get contract instance
+	marketIns, err := market.NewMarket(marketAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// make auth for provider
+	txAuth, err := comm.MakeAuth(chainID, sk2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// get order before
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("order info:", orderBefore)
+
+	// call settle
+	t.Log("provider settle an order")
+	tx, err := marketIns.ProSettle(txAuth, Addr1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("waiting for tx to be ok")
+	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Error("call settle err:", err)
+	}
+
+	// get order after
+	orderAfter, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("order info:", orderAfter)
+
+	// calc the time elapsed
+	elapsed := new(big.Int).Sub(orderAfter.LastSettleTime, orderBefore.LastSettleTime)
+	t.Log("time elapsed:", elapsed)
+	unitFee := new(big.Int).Div(orderAfter.TotalValue, orderAfter.Duration)
+	// calc the fee and remueration
+	fee := new(big.Int).Mul(unitFee, elapsed)
+	t.Log("the fee of order during this settlement: ", fee)
+
+	// new remu should be: remuBefore + fee
+	remu := new(big.Int).Add(orderBefore.Remuneration, fee)
+
+	// check new remueration after provider settle
+	if orderAfter.Remuneration.Cmp(remu) != 0 {
+		t.Errorf("remuneration is incorrect: %v, should be %v", orderAfter.Remuneration, remu)
+	}
+}
+
+// test provider withdraw from remuneration
+func TestProWithdraw(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := comm.ConnETH(endpoint)
+	t.Log("chain id:", chainID)
+
+	// get token instance
+	creditIns, err := credit.NewCredit(creditAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// get old provider credit
+	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{}, Addr2)
+	if err != nil {
+		t.Error("get provider balance failed:", err)
+	}
+	t.Log("provider old balance:", oldBal)
+
+	// get contract instance
+	marketIns, err := market.NewMarket(marketAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// get order info before call
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// make auth for sending transaction
+	txAuth, err := comm.MakeAuth(chainID, sk2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// withdraw some token
+	amount, ok := new(big.Int).SetString("100000000000000", 10)
+	if !ok {
+		t.Error("set string error")
+	}
+	// provider call withdraw with user as param
+	t.Log("provider withdraw")
+	tx, err := marketIns.ProWithdraw(txAuth, creditAddr, Addr1, amount)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("waiting for tx to be ok")
+	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Error("user withdraw err:", err)
+	}
+
+	// get order info after proWithdraw
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("order info:", orderInfo)
+
+	// remueration decreasement
+	remuDecre := new(big.Int).Sub(orderBefore.Remuneration, orderInfo.Remuneration)
+
+	// check new provider credit balance
+	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr2}, Addr2)
+	if err != nil {
+		t.Error("get credit balance of provider error")
+	}
+	t.Log("new provider balance:", newBal)
+
+	incre := new(big.Int).Sub(newBal, oldBal)
+	t.Log("balance increased: ", incre)
+	t.Log("withdraw amount: ", amount)
+	t.Log("remueration decreased: ", remuDecre)
+
+	// check remueration decreasement
+	if remuDecre.Cmp(amount) != 0 {
+		t.Errorf("remueration decreasement is incorrect: %v, should be: %v", remuDecre, amount)
+	}
+	// check balance increasement
+	if incre.Cmp(amount) != 0 {
+		if err != nil {
+			t.Errorf("provider balance incorrect: %v, should be: %v", newBal, amount)
+		}
+	}
+}
+
 // test user cancel order
 func TestUserCancel(t *testing.T) {
 	// connect to an eth node with ep
@@ -322,6 +472,12 @@ func TestUserCancel(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("old balance of user:", oldBal)
+
+	// get order info before call user cancel
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
 
 	// make auth for sending transaction
 	txAuth, err := comm.MakeAuth(chainID, sk1)
@@ -365,138 +521,19 @@ func TestUserCancel(t *testing.T) {
 	}
 	t.Log("new balance of user:", newBal)
 
-	// the remain value after settled
-	remain, _ := new(big.Int).SetString("9000000000000000", 10)
+	// calc the time elapsed
+	elapsed := new(big.Int).Sub(orderInfo.LastSettleTime, orderBefore.LastSettleTime)
+	t.Log("time elapsed:", elapsed)
+	unitFee := new(big.Int).Div(orderInfo.TotalValue, orderInfo.Duration)
+	// calc the fee and remain
+	fee := new(big.Int).Mul(unitFee, elapsed)
+	remain := new(big.Int).Sub(orderBefore.Remain, fee)
+
+	// the user refund after settled
+	//remain, _ := new(big.Int).SetString("9000000000000000", 10)
 	incre := newBal.Sub(newBal, oldBal)
 	if incre.Cmp(remain) != 0 {
-		t.Error("the increment of user balance is error, should equal to order remain value")
+		t.Errorf("the increment of user balance is error: %v, should be %v", incre, remain)
 	}
 
 }
-
-// test provider withdraw from remuneration
-func TestProWithdraw(t *testing.T) {
-	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
-	t.Log("chain id:", chainID)
-
-	// get token instance
-	creditIns, err := credit.NewCredit(creditAddr, backend)
-	if err != nil {
-		t.Error("new contract instance failed:", err)
-	}
-
-	// get old provider crecit
-	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{}, Addr2)
-	if err != nil {
-		t.Error("get provider balance failed:", err)
-	}
-	t.Log("provider old balance:", oldBal)
-
-	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
-	if err != nil {
-		t.Error("new contract instance failed:", err)
-	}
-
-	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk2)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// withdraw some token
-	amount, ok := new(big.Int).SetString("1000000000000000", 10)
-	if !ok {
-		t.Error("set string error")
-	}
-	// provider call activate with user as param
-	t.Log("provider withdraw")
-	tx, err := marketIns.ProWithdraw(txAuth, creditAddr, Addr1, amount)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error("user withdraw err:", err)
-	}
-
-	// get order
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("order info:", orderInfo)
-
-	// check remuneration value
-	remu, ok := new(big.Int).SetString("0", 10)
-	if !ok {
-		t.Error("set string error")
-	}
-	if orderInfo.Remuneration.Cmp(remu) != 0 {
-		if err != nil {
-			t.Error("remuneration value error")
-		}
-	}
-
-	// check new provider credit balance
-	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr2}, Addr2)
-	if err != nil {
-		t.Error("get credit balance of provider error")
-	}
-	t.Log("new provider balance:", newBal)
-
-	// check balance
-	b, ok := new(big.Int).SetString("1000000000000000", 10)
-	if !ok {
-		t.Error("set string error")
-	}
-	if newBal.Cmp(b) != 0 {
-		if err != nil {
-			t.Error("provider balance error")
-		}
-	}
-}
-
-/*
-// test settle
-func TestSettle(t *testing.T) {
-	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
-	t.Log("chain id:", chainID)
-
-	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
-	if err != nil {
-		t.Error("new contract instance failed:", err)
-	}
-
-	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// get order
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("order info:", orderInfo)
-
-	// call settle
-	t.Log("settle an order")
-	tx, err := marketIns.Settle(txAuth, Addr1, Addr2, orderInfo.LastSettleTime.Add(orderInfo.LastSettleTime, new(big.Int).SetUint64(10)))
-	if err != nil {
-		t.Error(err)
-	}
-
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error("call settle err:", err)
-	}
-
-}
-*/
