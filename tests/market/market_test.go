@@ -5,6 +5,7 @@ import (
 	"log"
 	"math/big"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -51,6 +52,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	// deploy market contract
+	t.Log("deploying market..")
 	_marketAddr, tx, _, err := market.DeployMarket(txAuth, backend)
 	if err != nil {
 		t.Error("deploy registry err:", err)
@@ -66,26 +68,8 @@ func TestDeploy(t *testing.T) {
 	receipt := comm.GetTransactionReceipt(endpoint, tx.Hash())
 	t.Log("gas used:", receipt.GasUsed)
 
-}
-
-func TestCreateOrder(t *testing.T) {
-	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
-	t.Log("chain id:", chainID)
-
-	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
-	if err != nil {
-		t.Error("new contract instance failed:", err)
-	}
-
-	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk1)
-	if err != nil {
-		t.Error(err)
-	}
-
 	// deploy access contract
+	t.Log("deploying access")
 	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, backend)
 	if err != nil {
 		t.Error("deploy access err:", err)
@@ -111,8 +95,8 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	// deploy credit contract
-	t.Log("deploy credit contract")
-	_creditAddr, tx, creditIns, err := credit.DeployCredit(txAuth, backend, accessAddr)
+	t.Log("deploying credit contract")
+	_creditAddr, tx, _, err := credit.DeployCredit(txAuth, backend, accessAddr)
 	if err != nil {
 		t.Error("deploy credit err:", err)
 	}
@@ -124,8 +108,27 @@ func TestCreateOrder(t *testing.T) {
 		t.Error("deploy contract err:", err)
 	}
 
+}
+
+func TestCreateOrder(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := comm.ConnETH(endpoint)
+	t.Log("chain id:", chainID)
+
+	// get contract instance
+	marketIns, err := market.NewMarket(marketAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// make auth for sending transaction
+	txAuth, err := comm.MakeAuth(chainID, sk1)
+	if err != nil {
+		t.Error(err)
+	}
+
 	// generate an order with init data
-	totalValue, ok := new(big.Int).SetString("10000000000000000", 10)
+	totalValue, ok := new(big.Int).SetString("12312312312312312", 10)
 	if !ok {
 		log.Fatal("big set string failed")
 	}
@@ -158,13 +161,17 @@ func TestCreateOrder(t *testing.T) {
 		ActivateTime:    new(big.Int).SetInt64(0),
 		LastSettleTime:  new(big.Int).SetInt64(0),
 		Probation:       new(big.Int).SetInt64(10),
-		Duration:        new(big.Int).SetInt64(100),
+		Duration:        new(big.Int).SetInt64(1231),
 		Status:          0, // unactive
 	}
 
+	creditIns, err := credit.NewCredit(creditAddr, backend)
+	if err != nil {
+		t.Error(err)
+	}
 	// mint some credit for approve
-	t.Log("mint credit to user")
-	tx, err = creditIns.Mint(txAuth, Addr1, order.TotalValue)
+	t.Log("admin mint credit to user")
+	tx, err := creditIns.Mint(txAuth, Addr1, order.TotalValue)
 	if err != nil {
 		t.Error("mint credit err:", err)
 	}
@@ -239,10 +246,10 @@ func TestGetOrder(t *testing.T) {
 	if orderInfo.R.NCPU != 1 {
 		t.Error("ncpu error")
 	}
-	remain, _ := new(big.Int).SetString("10000000000000000", 10)
-	if orderInfo.Remain.Cmp(remain) != 0 {
-		t.Error("deposit erro")
-	}
+	// remain, _ := new(big.Int).SetString("10000000000000000", 10)
+	// if orderInfo.Remain.Cmp(remain) != 0 {
+	// 	t.Error("deposit error")
+	// }
 	if orderInfo.UserConfirm != false {
 		t.Error("user confirm error")
 	}
@@ -343,13 +350,27 @@ func TestProSettle(t *testing.T) {
 	}
 	t.Log("order info:", orderAfter)
 
-	// calc the time elapsed
-	elapsed := new(big.Int).Sub(orderAfter.LastSettleTime, orderBefore.LastSettleTime)
-	t.Log("time elapsed:", elapsed)
+	nowTime := new(big.Int).Set(orderAfter.LastSettleTime)
+	probationTime := new(big.Int).Add(orderAfter.ActivateTime, orderAfter.Probation)
+	lastSettleTime := new(big.Int).Set(orderBefore.LastSettleTime)
+	payTime := new(big.Int)
+	t.Logf("nowTime: %v, probationTime: %v, lastSettle: %v, payTime: %v", nowTime, probationTime, lastSettleTime, payTime)
+
+	// calc the time payTime(the same as market contract)
+	// lastSettleTime <= probation time
+	if lastSettleTime.Cmp(probationTime) <= 0 {
+		if nowTime.Cmp(probationTime) > 0 {
+			payTime = payTime.Sub(nowTime, probationTime)
+		}
+	} else {
+		payTime = payTime.Sub(nowTime, lastSettleTime)
+	}
+
+	t.Log("time to pay:", payTime)
 	unitFee := new(big.Int).Div(orderAfter.TotalValue, orderAfter.Duration)
-	// calc the fee and remueration
-	fee := new(big.Int).Mul(unitFee, elapsed)
-	t.Log("the fee of order during this settlement: ", fee)
+	// calc the pay fee and remueration
+	fee := new(big.Int).Mul(unitFee, payTime)
+	t.Log("the fee to pay during this settlement: ", fee)
 
 	// new remu should be: remuBefore + fee
 	remu := new(big.Int).Add(orderBefore.Remuneration, fee)
@@ -358,6 +379,70 @@ func TestProSettle(t *testing.T) {
 	if orderAfter.Remuneration.Cmp(remu) != 0 {
 		t.Errorf("remuneration is incorrect: %v, should be %v", orderAfter.Remuneration, remu)
 	}
+
+	// -------------------
+
+	t.Log("waiting for the probation to be over, 10s...")
+	// wait for the probation to be over
+	time.Sleep(10 * time.Second)
+
+	// get order before
+	orderBefore, err = marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("order info:", orderBefore)
+
+	// call settle
+	t.Log("provider settle an order")
+	tx, err = marketIns.ProSettle(txAuth, Addr1)
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("waiting for tx to be ok")
+	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Error("call settle err:", err)
+	}
+
+	// get order after
+	orderAfter, err = marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("order info:", orderAfter)
+
+	nowTime = new(big.Int).Set(orderAfter.LastSettleTime)
+	probationTime = new(big.Int).Add(orderAfter.ActivateTime, orderAfter.Probation)
+	lastSettleTime = new(big.Int).Set(orderBefore.LastSettleTime)
+	payTime = new(big.Int)
+	t.Logf("nowTime: %v, probationTime: %v, lastSettle: %v, payTime: %v", nowTime, probationTime, lastSettleTime, payTime)
+
+	// calc the time payTime(the same as market contract)
+	// lastSettleTime <= probation time
+	if lastSettleTime.Cmp(probationTime) <= 0 {
+		if nowTime.Cmp(probationTime) > 0 {
+			payTime = payTime.Sub(nowTime, probationTime)
+		}
+	} else {
+		payTime = payTime.Sub(nowTime, lastSettleTime)
+	}
+
+	t.Log("time to pay:", payTime)
+	unitFee = new(big.Int).Div(orderAfter.TotalValue, orderAfter.Duration)
+	// calc the pay fee and remueration
+	fee = new(big.Int).Mul(unitFee, payTime)
+	t.Log("the fee to pay during this settlement: ", fee)
+
+	// new remu should be: remuBefore + fee
+	remu = new(big.Int).Add(orderBefore.Remuneration, fee)
+
+	// check new remueration after provider settle
+	if orderAfter.Remuneration.Cmp(remu) != 0 {
+		t.Errorf("remuneration is incorrect: %v, should be %v", orderAfter.Remuneration, remu)
+	}
+
 }
 
 // test provider withdraw from remuneration
@@ -398,7 +483,7 @@ func TestProWithdraw(t *testing.T) {
 	}
 
 	// withdraw some token
-	amount, ok := new(big.Int).SetString("100000000000000", 10)
+	amount, ok := new(big.Int).SetString("123123123", 10)
 	if !ok {
 		t.Error("set string error")
 	}

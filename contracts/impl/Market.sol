@@ -53,6 +53,7 @@ contract Market {
 
         // the time for trying out
         uint256 probation;
+
         // the time for order's service
         uint256 duration;
 
@@ -106,8 +107,8 @@ contract Market {
         require(_order.status==0,"only unactive order can be activated");
 
         // activate
-        orders[user][msg.sender].lastSettleTime=block.timestamp;
-        orders[user][msg.sender].activateTime=block.timestamp;
+        orders[user][msg.sender].lastSettleTime = block.timestamp;
+        orders[user][msg.sender].activateTime = block.timestamp;
         orders[user][msg.sender].status=1;
     }
 
@@ -156,13 +157,29 @@ contract Market {
         // current timestamp
         uint256 nowTime = block.timestamp;
 
-        require(_order.status==1,"order must be in activate status to settle");
-        require(nowTime >= _order.lastSettleTime);
+        require(_order.status == 1,"order must be in activate status to settle");
+        require(nowTime >= _order.lastSettleTime,"the settle time must later than last settlement");
 
-        // calc the elapsed time since last settlement.
-        // note: the last time is set to activate time when order activated.
-        // use second this version.
-        uint256 elapsed = nowTime - _order.lastSettleTime;
+        // the time that is not in probation and should be paid
+        uint256 payTime;
+        // the time when probation is over
+        uint256 probationTime =_order.activateTime + _order.probation;
+
+        // last settle in probation
+        if (_order.lastSettleTime <= probationTime) {
+            // if now time over probation, should pay
+            if (nowTime > probationTime) {
+                payTime = nowTime - probationTime;
+            } else {
+                // if now time is in probation, no pay, just change the settle time and return
+                orders[user][provider].lastSettleTime = nowTime;
+                return;
+            }
+        } else {
+            // if last settle over probation already, just get the pay time
+            payTime = nowTime - _order.lastSettleTime;
+        }
+
         // the total service time
         uint256 total = nowTime - _order.activateTime;
 
@@ -173,11 +190,13 @@ contract Market {
 
         // check if order is time up
         bool timeup = false;
-        if (total >= _order.duration) {
+        if (total >= _order.duration + _order.probation) {
+            // all remaining fee should be paid to provider when order is timeup
             settleFee = _order.remain;
             timeup = true;
         } else {
-            settleFee = unitFee * elapsed;
+            // calc settle fee with pay time
+            settleFee = unitFee * payTime;
         }
 
         // update order info
