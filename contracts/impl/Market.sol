@@ -68,10 +68,18 @@ contract Market {
     constructor() {
     }
 
+    event OrderValue(uint256 totalValue);
+
     /**
      * @dev user create an order with a provider， user approve must be called previously
      */
     function createOrder(address creditAddr, address provider, Order memory order) external {
+        // verify the total value of this order with all resources and price
+        uint256 totalValue = _valueOrder(order);
+        require(totalValue==order.totalValue,"the totalvalue verify failed for this order");
+
+        emit OrderValue(totalValue);
+
         // transfer token to market contract
         ICredit(creditAddr).transferFrom(msg.sender, address(this), order.totalValue);
 
@@ -86,9 +94,22 @@ contract Market {
         return orders[msg.sender][provider];
     }
 
-    // calc the fee of an order
-    function feeOrder(Order memory order) external view returns(uint256) {
+    // calc the totalvalue of an order
+    function _valueOrder(Order memory order) internal pure returns(uint256) {
+        // unit price * amount
+        uint256 nCPU = order.r.nCPU;
+        uint256 nGPU = order.r.nGPU;
+        uint256 nMEM = order.r.nMEM;
+        uint256 nDISK = order.r.nDISK;
 
+        uint256 pCPU = order.p.pCPU;
+        uint256 pGPU = order.p.pGPU;
+        uint256 pMEM = order.p.pMEM;
+        uint256 pDISK = order.p.pDISK;
+
+        uint256 value = (nCPU*pCPU + nGPU*pGPU + nMEM*pMEM + nDISK*pDISK) * order.duration;
+
+        return value;
     }
 
     // set the status of an order, only called by contract

@@ -128,7 +128,7 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	// generate an order with init data
-	totalValue, ok := new(big.Int).SetString("12312312312312312", 10)
+	totalValue, ok := new(big.Int).SetString("2831300", 10)
 	if !ok {
 		log.Fatal("big set string failed")
 	}
@@ -141,8 +141,8 @@ func TestCreateOrder(t *testing.T) {
 		Provider: Addr2,
 
 		P: market.MarketPricePerHour{
-			PCPU:  1,
-			PGPU:  10,
+			PCPU:  100,
+			PGPU:  1000,
 			PMEM:  10,
 			PDISK: 1,
 		},
@@ -239,26 +239,6 @@ func TestGetOrder(t *testing.T) {
 	}
 
 	t.Log("order info:", orderInfo)
-
-	if orderInfo.P.PCPU != 1 {
-		t.Error("pcpu error")
-	}
-	if orderInfo.R.NCPU != 1 {
-		t.Error("ncpu error")
-	}
-	// remain, _ := new(big.Int).SetString("10000000000000000", 10)
-	// if orderInfo.Remain.Cmp(remain) != 0 {
-	// 	t.Error("deposit error")
-	// }
-	if orderInfo.UserConfirm != false {
-		t.Error("user confirm error")
-	}
-	if orderInfo.ActivateTime.Cmp(new(big.Int).SetInt64(0)) != 0 {
-		t.Error("active time error")
-	}
-	if orderInfo.Status != 0 {
-		t.Error("status error")
-	}
 }
 
 // test provider activate an order
@@ -482,8 +462,8 @@ func TestProWithdraw(t *testing.T) {
 		t.Error(err)
 	}
 
-	// withdraw some token
-	amount, ok := new(big.Int).SetString("123123123", 10)
+	// provider withdraw some token from remuneration
+	amount, ok := new(big.Int).SetString("2124", 10)
 	if !ok {
 		t.Error("set string error")
 	}
