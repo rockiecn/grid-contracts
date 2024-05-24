@@ -16,20 +16,6 @@ import (
 )
 
 var (
-	// endpoint for ganache
-	endpoint string = "HTTP://127.0.0.1:7545"
-
-	// acc1 of ganache
-	addr1 string = "0x5F7F7e31399531F08C2b47eA1919F11346405a16"
-	// acc2 of ganache
-	addr2 string = "0xe2198eb2e931f9306ABcA68D4F093E0Ac4823B0d"
-	Addr1        = common.HexToAddress(addr1)
-	Addr2        = common.HexToAddress(addr2)
-
-	// use acc1 as the admin to send tx
-	sk1 string = "c1e763d955e6aea410e40b95702108a30efb4d25b32d419910fe2ac611c2229d"
-	sk2 string = "e8cda8fe7c04afa4a0630af457972f88a645468cb90120a11911669deac5e96e"
-
 	// access contract address
 	accessAddr common.Address
 	// credit contract address
@@ -39,14 +25,14 @@ var (
 )
 
 func TestDeploy(t *testing.T) {
-	t.Log("connecting to eth:", endpoint)
+	t.Log("connecting to eth:", comm.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
+	backend, chainID := comm.ConnETH(comm.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk1)
+	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -60,12 +46,12 @@ func TestDeploy(t *testing.T) {
 	marketAddr = _marketAddr
 	t.Log("created market address: ", marketAddr.Hex())
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
 
-	receipt := comm.GetTransactionReceipt(endpoint, tx.Hash())
+	receipt := comm.GetTransactionReceipt(comm.Endpoint, tx.Hash())
 	t.Log("gas used:", receipt.GasUsed)
 
 	// deploy access contract
@@ -77,19 +63,19 @@ func TestDeploy(t *testing.T) {
 	accessAddr = _accessAddr
 	t.Log("created access address: ", accessAddr.Hex())
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
 
 	// set access for admin
 	t.Log("set access for admin")
-	tx, err = accessIns.Set(txAuth, Addr1, true)
+	tx, err = accessIns.Set(txAuth, comm.Addr1, true)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -103,7 +89,7 @@ func TestDeploy(t *testing.T) {
 	creditAddr = _creditAddr
 	t.Log("credit address:", creditAddr)
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
@@ -112,7 +98,7 @@ func TestDeploy(t *testing.T) {
 
 func TestCreateOrder(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
+	backend, chainID := comm.ConnETH(comm.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -122,7 +108,7 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk1)
+	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -137,8 +123,8 @@ func TestCreateOrder(t *testing.T) {
 		log.Fatal("big set string failed")
 	}
 	order := market.MarketOrder{
-		User:     Addr1,
-		Provider: Addr2,
+		User:     comm.Addr1,
+		Provider: comm.Addr2,
 
 		P: market.MarketPricePerHour{
 			PCPU:  100,
@@ -171,12 +157,12 @@ func TestCreateOrder(t *testing.T) {
 	}
 	// mint some credit for approve
 	t.Log("admin mint credit to user")
-	tx, err := creditIns.Mint(txAuth, Addr1, order.TotalValue)
+	tx, err := creditIns.Mint(txAuth, comm.Addr1, order.TotalValue)
 	if err != nil {
 		t.Error("mint credit err:", err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("wait tx err:", err)
 	}
@@ -189,25 +175,25 @@ func TestCreateOrder(t *testing.T) {
 	}
 	// wait for tx to be ok
 	t.Log("waiting tx")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
 
 	// create order
 	t.Log("call create order")
-	tx, err = marketIns.CreateOrder(txAuth, creditAddr, Addr2, order)
+	tx, err = marketIns.CreateOrder(txAuth, creditAddr, comm.Addr2, order)
 	if err != nil {
 		t.Error(err)
 	}
 	// wait for tx to be ok
 	t.Log("waiting tx")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
 
-	receipt := comm.GetTransactionReceipt(endpoint, tx.Hash())
+	receipt := comm.GetTransactionReceipt(comm.Endpoint, tx.Hash())
 	t.Log("gas used:", receipt.GasUsed)
 
 	// check credit balance of market contract after create order
@@ -223,7 +209,7 @@ func TestCreateOrder(t *testing.T) {
 
 func TestGetOrder(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
+	backend, chainID := comm.ConnETH(comm.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get market instance
@@ -233,7 +219,7 @@ func TestGetOrder(t *testing.T) {
 	}
 
 	// call
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -244,7 +230,7 @@ func TestGetOrder(t *testing.T) {
 // test provider activate an order
 func TestActivate(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
+	backend, chainID := comm.ConnETH(comm.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -254,26 +240,26 @@ func TestActivate(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk2)
+	txAuth, err := comm.MakeAuth(chainID, comm.SK2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// provider call activate with user as param
 	t.Log("provider activate an order")
-	tx, err := marketIns.Activate(txAuth, Addr1)
+	tx, err := marketIns.Activate(txAuth, comm.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
 
 	// get order
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -288,7 +274,7 @@ func TestActivate(t *testing.T) {
 // test provider settle
 func TestProSettle(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
+	backend, chainID := comm.ConnETH(comm.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -298,13 +284,13 @@ func TestProSettle(t *testing.T) {
 	}
 
 	// make auth for provider
-	txAuth, err := comm.MakeAuth(chainID, sk2)
+	txAuth, err := comm.MakeAuth(chainID, comm.SK2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// get order before
-	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -312,19 +298,19 @@ func TestProSettle(t *testing.T) {
 
 	// call settle
 	t.Log("provider settle an order")
-	tx, err := marketIns.ProSettle(txAuth, Addr1)
+	tx, err := marketIns.ProSettle(txAuth, comm.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("call settle err:", err)
 	}
 
 	// get order after
-	orderAfter, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderAfter, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -367,7 +353,7 @@ func TestProSettle(t *testing.T) {
 	time.Sleep(10 * time.Second)
 
 	// get order before
-	orderBefore, err = marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderBefore, err = marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -375,19 +361,19 @@ func TestProSettle(t *testing.T) {
 
 	// call settle
 	t.Log("provider settle an order")
-	tx, err = marketIns.ProSettle(txAuth, Addr1)
+	tx, err = marketIns.ProSettle(txAuth, comm.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("call settle err:", err)
 	}
 
 	// get order after
-	orderAfter, err = marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderAfter, err = marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -428,7 +414,7 @@ func TestProSettle(t *testing.T) {
 // test provider withdraw from remuneration
 func TestProWithdraw(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
+	backend, chainID := comm.ConnETH(comm.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get token instance
@@ -438,7 +424,7 @@ func TestProWithdraw(t *testing.T) {
 	}
 
 	// get old provider credit
-	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{}, Addr2)
+	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{}, comm.Addr2)
 	if err != nil {
 		t.Error("get provider balance failed:", err)
 	}
@@ -451,13 +437,13 @@ func TestProWithdraw(t *testing.T) {
 	}
 
 	// get order info before call
-	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk2)
+	txAuth, err := comm.MakeAuth(chainID, comm.SK2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -469,18 +455,18 @@ func TestProWithdraw(t *testing.T) {
 	}
 	// provider call withdraw with user as param
 	t.Log("provider withdraw")
-	tx, err := marketIns.ProWithdraw(txAuth, creditAddr, Addr1, amount)
+	tx, err := marketIns.ProWithdraw(txAuth, creditAddr, comm.Addr1, amount)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("user withdraw err:", err)
 	}
 
 	// get order info after proWithdraw
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -490,7 +476,7 @@ func TestProWithdraw(t *testing.T) {
 	remuDecre := new(big.Int).Sub(orderBefore.Remuneration, orderInfo.Remuneration)
 
 	// check new provider credit balance
-	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr2}, Addr2)
+	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
 	if err != nil {
 		t.Error("get credit balance of provider error")
 	}
@@ -516,7 +502,7 @@ func TestProWithdraw(t *testing.T) {
 // test user cancel order
 func TestUserCancel(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(endpoint)
+	backend, chainID := comm.ConnETH(comm.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -532,38 +518,38 @@ func TestUserCancel(t *testing.T) {
 	}
 
 	// get balance of user before cancel order
-	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
+	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr1}, comm.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("old balance of user:", oldBal)
 
 	// get order info before call user cancel
-	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, sk1)
+	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// user cancel order, remain value is refunded to user
 	t.Log("user cancels an order")
-	tx, err := marketIns.UserCancel(txAuth, creditAddr, Addr2)
+	tx, err := marketIns.UserCancel(txAuth, creditAddr, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(endpoint, tx.Hash(), "")
+	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
 
 	// check status
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: Addr1}, Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -580,7 +566,7 @@ func TestUserCancel(t *testing.T) {
 	}
 
 	// check user token balance
-	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: Addr1}, Addr1)
+	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr1}, comm.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
