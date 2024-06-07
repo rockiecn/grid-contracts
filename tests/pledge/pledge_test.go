@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	comm "github.com/grid/contracts/common"
+	"github.com/grid/contracts/eth"
 	"github.com/grid/contracts/go/gtoken"
 	"github.com/grid/contracts/go/pledge"
 )
@@ -25,14 +25,14 @@ var (
 // setRate
 
 func TestDeploy(t *testing.T) {
-	t.Log("connecting to eth:", comm.Endpoint)
+	t.Log("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -45,12 +45,12 @@ func TestDeploy(t *testing.T) {
 	pledgeAddr = _pledgeAddr
 	t.Log("created pledge address: ", pledgeAddr.Hex())
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
 
-	receipt := comm.GetTransactionReceipt(comm.Endpoint, tx.Hash())
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	t.Log("gas used:", receipt.GasUsed)
 
 	// deploy token contract
@@ -62,7 +62,7 @@ func TestDeploy(t *testing.T) {
 	tokenAddr = _tokenAddr
 	t.Log("token address:", tokenAddr)
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
@@ -70,7 +70,7 @@ func TestDeploy(t *testing.T) {
 
 func TestPledge(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -84,12 +84,12 @@ func TestPledge(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth1, err := comm.MakeAuth(chainID, comm.SK1)
+	txAuth1, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	txAuth2, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -102,12 +102,12 @@ func TestPledge(t *testing.T) {
 
 	// mint some token for approve
 	t.Log("mint token to user")
-	tx, err := tokenIns.Mint(txAuth1, comm.Addr2, amount)
+	tx, err := tokenIns.Mint(txAuth1, eth.Addr2, amount)
 	if err != nil {
 		t.Error("mint token err:", err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("wait tx err:", err)
 	}
@@ -120,19 +120,19 @@ func TestPledge(t *testing.T) {
 	}
 	// wait tx
 	t.Log("waiting tx..")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("approve err:", err)
 	}
 
 	// for address2, check old value
-	opts2 := &bind.CallOpts{From: comm.Addr2}
+	opts2 := &bind.CallOpts{From: eth.Addr2}
 
 	oldPledge, err := pledgeIns.GetPledge(opts2)
 	if err != nil {
 		t.Error(err)
 	}
-	oldBalance, err := tokenIns.BalanceOf(opts2, comm.Addr2)
+	oldBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -148,7 +148,7 @@ func TestPledge(t *testing.T) {
 	}
 	// wait tx
 	t.Log("waiting tx..")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("pledge err:", err)
 	}
@@ -157,7 +157,7 @@ func TestPledge(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	newBalance, err := tokenIns.BalanceOf(opts2, comm.Addr2)
+	newBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -182,7 +182,7 @@ func TestPledge(t *testing.T) {
 
 func TestUnPledge(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -196,19 +196,19 @@ func TestUnPledge(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth2, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// for address2
-	opts2 := &bind.CallOpts{From: comm.Addr2}
+	opts2 := &bind.CallOpts{From: eth.Addr2}
 
 	oldPledge, err := pledgeIns.GetPledge(opts2)
 	if err != nil {
 		t.Error(err)
 	}
-	oldBalance, err := tokenIns.BalanceOf(opts2, comm.Addr2)
+	oldBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -230,7 +230,7 @@ func TestUnPledge(t *testing.T) {
 	}
 	// wait tx
 	t.Log("waiting tx..")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("pledge err:", err)
 	}
@@ -239,7 +239,7 @@ func TestUnPledge(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	newBalance, err := tokenIns.BalanceOf(opts2, comm.Addr2)
+	newBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -264,7 +264,7 @@ func TestUnPledge(t *testing.T) {
 
 func TestWithdrawInterest(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -278,19 +278,19 @@ func TestWithdrawInterest(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth2, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// for address2
-	opts2 := &bind.CallOpts{From: comm.Addr2}
+	opts2 := &bind.CallOpts{From: eth.Addr2}
 
 	oldInterest, err := pledgeIns.GetInterest(opts2)
 	if err != nil {
 		t.Error(err)
 	}
-	oldBalance, err := tokenIns.BalanceOf(opts2, comm.Addr2)
+	oldBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -305,7 +305,7 @@ func TestWithdrawInterest(t *testing.T) {
 	}
 	// wait tx
 	t.Log("waiting tx..")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("update err:", err)
 	}
@@ -324,7 +324,7 @@ func TestWithdrawInterest(t *testing.T) {
 	}
 	// wait tx
 	t.Log("waiting tx..")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("withdraw err:", err)
 	}
@@ -333,7 +333,7 @@ func TestWithdrawInterest(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	newBalance, err := tokenIns.BalanceOf(opts2, comm.Addr2)
+	newBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -351,7 +351,7 @@ func TestWithdrawInterest(t *testing.T) {
 
 func TestSetRate(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
@@ -361,12 +361,12 @@ func TestSetRate(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth1, err := comm.MakeAuth(chainID, comm.SK1)
+	txAuth1, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	oldRate, err := pledgeIns.GetRate(&bind.CallOpts{From: comm.Addr1})
+	oldRate, err := pledgeIns.GetRate(&bind.CallOpts{From: eth.Addr1})
 	if err != nil {
 		t.Error(err)
 	}
@@ -383,13 +383,13 @@ func TestSetRate(t *testing.T) {
 	}
 	// wait tx
 	t.Log("waiting tx..")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("set rate err:", err)
 	}
 
 	// get new rate
-	newRate, err := pledgeIns.GetRate(&bind.CallOpts{From: comm.Addr1})
+	newRate, err := pledgeIns.GetRate(&bind.CallOpts{From: eth.Addr1})
 	if err != nil {
 		t.Error(err)
 	}

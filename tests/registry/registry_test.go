@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	comm "github.com/grid/contracts/common"
+	"github.com/grid/contracts/eth"
 	"github.com/grid/contracts/go/registry"
 )
 
@@ -16,14 +16,14 @@ var (
 )
 
 func TestDeploy(t *testing.T) {
-	t.Log("connecting to eth:", comm.Endpoint)
+	t.Log("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	client, chainID := comm.ConnETH(comm.Endpoint)
+	client, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -38,19 +38,19 @@ func TestDeploy(t *testing.T) {
 	t.Log("created registry address: ", contractAddr.Hex())
 
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy token err:", err)
 	}
 
-	receipt := comm.GetTransactionReceipt(comm.Endpoint, tx.Hash())
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	t.Log("gas used:", receipt.GasUsed)
 
 }
 
 func TestGet(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get token instance
@@ -61,7 +61,7 @@ func TestGet(t *testing.T) {
 	}
 
 	// get balance of addr2
-	regInfo, err := contractIns.Get(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	regInfo, err := contractIns.Get(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -70,7 +70,7 @@ func TestGet(t *testing.T) {
 
 func TestSet(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get token instance
@@ -80,23 +80,23 @@ func TestSet(t *testing.T) {
 	}
 
 	// register for acc2
-	txAuth2, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// call registry's Set method
-	tx, err := contractIns.Set(txAuth2, "123.123.123.0", "test domain", 123, 11, 22, 33, 44)
+	tx, err := contractIns.Set(txAuth2, "123.123.123.0", "test domain", "123", 11, 22, 33, 44)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// wait tx ok
 	t.Log("waiting for set to be ok")
-	comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 
 	// get reg info
-	regInfo, err := contractIns.Get(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	regInfo, err := contractIns.Get(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -109,7 +109,7 @@ func TestSet(t *testing.T) {
 	if regInfo.Domain != "test domain" {
 		t.Error("domain is error")
 	}
-	if regInfo.Port != 123 {
+	if regInfo.Port != "123" {
 		t.Error("port is error")
 	}
 	if regInfo.Total.CPU != 11 {
@@ -128,7 +128,7 @@ func TestSet(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get token instance
@@ -138,7 +138,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	// register for acc2
-	txAuth2, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -151,10 +151,10 @@ func TestUpdate(t *testing.T) {
 
 	// wait tx ok
 	t.Log("waiting for tx to be ok")
-	comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 
 	// get reg info
-	regInfo, err := contractIns.Get(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	regInfo, err := contractIns.Get(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -167,7 +167,7 @@ func TestUpdate(t *testing.T) {
 	if regInfo.Domain != "test domain" {
 		t.Error("domain is error")
 	}
-	if regInfo.Port != 123 {
+	if regInfo.Port != "123" {
 		t.Error("port is error")
 	}
 	if regInfo.Avail.CPU != 10 {

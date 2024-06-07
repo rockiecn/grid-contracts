@@ -170,6 +170,9 @@ contract Market {
         orders[user][msg.sender].status = 2;
     }
 
+    // output debug msg
+    event Output(uint8 msg);
+    event Paytime(uint256 pt);
 
     // settle fee for an order, up to the settleTime
     function _settle(address user, address provider) internal {
@@ -201,6 +204,8 @@ contract Market {
             payTime = nowTime - _order.lastSettleTime;
         }
 
+        emit Paytime(payTime);
+
         // the total service time
         uint256 total = nowTime - _order.activateTime;
 
@@ -210,6 +215,7 @@ contract Market {
         uint256 settleFee;
 
         // check if order is time up
+
         bool timeup = false;
         if (total >= _order.duration + _order.probation) {
             // all remaining fee should be paid to provider when order is timeup
@@ -220,12 +226,15 @@ contract Market {
             settleFee = unitFee * payTime;
         }
 
+
         // update order info
+
         orders[user][provider].remain -= settleFee;
         orders[user][provider].remuneration += settleFee;
         orders[user][provider].lastSettleTime = nowTime;
 
         // when service time is over, the order status is set to completed
+
         if(timeup) {
             orders[user][provider].status = 3;
         }

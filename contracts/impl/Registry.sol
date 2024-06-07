@@ -20,7 +20,7 @@ contract Registry {
     struct Info{
         string ip;
         string domain;
-        uint64 port;
+        string port;
 
         Resources total; // total resources
         Resources avail; // available resources
@@ -32,7 +32,7 @@ contract Registry {
      * @dev set cp info
      * @param cpu value of cpu
      */
-    function set(string memory ip, string memory domain, uint64 port, uint64 cpu,  uint64 gpu,  uint64 mem,  uint64 disk) public {
+    function set(string memory ip, string memory domain, string memory port, uint64 cpu,  uint64 gpu,  uint64 mem,  uint64 disk) public {
         registry[msg.sender].ip=ip;
         registry[msg.sender].domain=domain;
         registry[msg.sender].port=port;

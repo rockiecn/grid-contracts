@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	comm "github.com/grid/contracts/common"
+	"github.com/grid/contracts/eth"
 	"github.com/grid/contracts/go/access"
 	"github.com/grid/contracts/go/credit"
 	"github.com/grid/contracts/go/gtoken"
@@ -29,14 +29,14 @@ var (
 
 // deploy credit, gtoken, swap contracts
 func TestDeploy(t *testing.T) {
-	t.Log("connecting to eth:", comm.Endpoint)
+	t.Log("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -49,7 +49,7 @@ func TestDeploy(t *testing.T) {
 	accessAddr = _accessAddr
 	t.Log("created access address: ", accessAddr.Hex())
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
@@ -62,7 +62,7 @@ func TestDeploy(t *testing.T) {
 	creditAddr = _creditAddr
 	t.Log("created credit address: ", creditAddr.Hex())
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
@@ -75,7 +75,7 @@ func TestDeploy(t *testing.T) {
 	tokenAddr = _tokenAddr
 	t.Log("created gtoken address: ", tokenAddr.Hex())
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
@@ -88,7 +88,7 @@ func TestDeploy(t *testing.T) {
 	swapAddr = _swapAddr
 	t.Log("created swap address: ", swapAddr.Hex())
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
@@ -101,19 +101,19 @@ func TestDeploy(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
 
 	// set access for admin and swap contract
 	t.Log("set access for admin")
-	tx, err = accessIns.Set(txAuth, comm.Addr1, true)
+	tx, err = accessIns.Set(txAuth, eth.Addr1, true)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -124,30 +124,30 @@ func TestDeploy(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
 
-	// receipt := comm.GetTransactionReceipt(comm.Endpoint, tx.Hash())
+	// receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	// t.Log("gas used:", receipt.GasUsed)
 }
 
 // test credit buy gtoken
 // admin mint credit for user, user buy gtoken with credit, check balance
 func TestBuy(t *testing.T) {
-	t.Log("connecting to eth:", comm.Endpoint)
+	t.Log("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	adminAuth, err := comm.MakeAuth(chainID, comm.SK1)
+	adminAuth, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
-	userAuth, err := comm.MakeAuth(chainID, comm.SK2)
+	userAuth, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -160,18 +160,18 @@ func TestBuy(t *testing.T) {
 	// mint 10 credit
 	t.Log("admin mint credit to user")
 	credit := new(big.Int).SetUint64(10)
-	tx, err := creditIns.Mint(adminAuth, comm.Addr2, credit)
+	tx, err := creditIns.Mint(adminAuth, eth.Addr2, credit)
 	if err != nil {
 		t.Error(err)
 	}
 
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
 	// check credit
-	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -185,7 +185,7 @@ func TestBuy(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -199,7 +199,7 @@ func TestBuy(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -215,7 +215,7 @@ func TestBuy(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("buy gtoken err:", err)
 	}
@@ -223,7 +223,7 @@ func TestBuy(t *testing.T) {
 	// check balance after
 
 	// user's credit balance
-	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -234,7 +234,7 @@ func TestBuy(t *testing.T) {
 	}
 
 	// user's gtoken balance
-	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -249,14 +249,14 @@ func TestBuy(t *testing.T) {
 
 // sell gtoken for credit
 func TestSell(t *testing.T) {
-	t.Log("connecting to eth:", comm.Endpoint)
+	t.Log("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	userAuth, err := comm.MakeAuth(chainID, comm.SK2)
+	userAuth, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -267,7 +267,7 @@ func TestSell(t *testing.T) {
 	}
 
 	// check credit before sell
-	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -278,7 +278,7 @@ func TestSell(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -292,7 +292,7 @@ func TestSell(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
@@ -308,7 +308,7 @@ func TestSell(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("buy gtoken err:", err)
 	}
@@ -316,7 +316,7 @@ func TestSell(t *testing.T) {
 	// check balance after
 
 	// user's credit balance
-	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -330,7 +330,7 @@ func TestSell(t *testing.T) {
 	}
 
 	// gtoken balance
-	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -343,14 +343,14 @@ func TestSell(t *testing.T) {
 }
 
 func TestSettle(t *testing.T) {
-	t.Log("connecting to eth:", comm.Endpoint)
+	t.Log("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	adminAuth, err := comm.MakeAuth(chainID, comm.SK1)
+	adminAuth, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -372,7 +372,7 @@ func TestSettle(t *testing.T) {
 	t.Log("balance in swap before settle:", balInSwap)
 
 	// token balance of admin before settle
-	balBefore, err := tokenIns.BalanceOf(&bind.CallOpts{}, comm.Addr1)
+	balBefore, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -385,13 +385,13 @@ func TestSettle(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
 
 	// token balance after settle
-	balAfter, err := tokenIns.BalanceOf(&bind.CallOpts{}, comm.Addr1)
+	balAfter, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}

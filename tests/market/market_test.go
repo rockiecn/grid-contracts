@@ -5,110 +5,55 @@ import (
 	"log"
 	"math/big"
 	"testing"
-	"time"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
-	comm "github.com/grid/contracts/common"
-	"github.com/grid/contracts/go/access"
+	"github.com/grid/contracts/eth"
 	"github.com/grid/contracts/go/credit"
 	"github.com/grid/contracts/go/market"
 )
 
 var (
-	// access contract address
-	accessAddr common.Address
-	// credit contract address
-	creditAddr common.Address
 	// market contract addr
-	marketAddr common.Address
+	MarketAddr common.Address
+	// access contract address
+	AccessAddr common.Address
+	// credit contract address
+	CreditAddr common.Address
 )
 
-func TestDeploy(t *testing.T) {
-	t.Log("connecting to eth:", comm.Endpoint)
+// load all addresses from json
+func TestLoad(t *testing.T) {
+	t.Log("test load addresses")
 
-	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
-	t.Log("chain id:", chainID)
+	// loading
+	a := eth.Load("./address.json")
+	t.Logf("%+v\n", a)
 
-	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
-	if err != nil {
-		t.Error(err)
-	}
-
-	// deploy market contract
-	t.Log("deploying market..")
-	_marketAddr, tx, _, err := market.DeployMarket(txAuth, backend)
-	if err != nil {
-		t.Error("deploy registry err:", err)
-	}
-	marketAddr = _marketAddr
-	t.Log("created market address: ", marketAddr.Hex())
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error("deploy contract err:", err)
+	if a.Market == "" || a.Access == "" || a.Credit == "" {
+		t.Error("all address must exist in json file")
 	}
 
-	receipt := comm.GetTransactionReceipt(comm.Endpoint, tx.Hash())
-	t.Log("gas used:", receipt.GasUsed)
-
-	// deploy access contract
-	t.Log("deploying access")
-	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, backend)
-	if err != nil {
-		t.Error("deploy access err:", err)
-	}
-	accessAddr = _accessAddr
-	t.Log("created access address: ", accessAddr.Hex())
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error("deploy contract err:", err)
-	}
-
-	// set access for admin
-	t.Log("set access for admin")
-	tx, err = accessIns.Set(txAuth, comm.Addr1, true)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error(err)
-	}
-
-	// deploy credit contract
-	t.Log("deploying credit contract")
-	_creditAddr, tx, _, err := credit.DeployCredit(txAuth, backend, accessAddr)
-	if err != nil {
-		t.Error("deploy credit err:", err)
-	}
-	creditAddr = _creditAddr
-	t.Log("credit address:", creditAddr)
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error("deploy contract err:", err)
-	}
-
+	MarketAddr = common.HexToAddress(a.Market)
+	AccessAddr = common.HexToAddress(a.Access)
+	CreditAddr = common.HexToAddress(a.Credit)
 }
 
+// test create an order with test data
+// gas:256945
 func TestCreateOrder(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
+	marketIns, err := market.NewMarket(MarketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -123,8 +68,8 @@ func TestCreateOrder(t *testing.T) {
 		log.Fatal("big set string failed")
 	}
 	order := market.MarketOrder{
-		User:     comm.Addr1,
-		Provider: comm.Addr2,
+		User:     eth.Addr1,
+		Provider: eth.Addr2,
 
 		P: market.MarketPricePerHour{
 			PCPU:  100,
@@ -146,80 +91,92 @@ func TestCreateOrder(t *testing.T) {
 		ProviderConfirm: false,
 		ActivateTime:    new(big.Int).SetInt64(0),
 		LastSettleTime:  new(big.Int).SetInt64(0),
-		Probation:       new(big.Int).SetInt64(10),
+		Probation:       new(big.Int).SetInt64(5),
 		Duration:        new(big.Int).SetInt64(1231),
 		Status:          0, // unactive
 	}
 
-	creditIns, err := credit.NewCredit(creditAddr, backend)
+	creditIns, err := credit.NewCredit(CreditAddr, backend)
 	if err != nil {
 		t.Error(err)
 	}
 	// mint some credit for approve
 	t.Log("admin mint credit to user")
-	tx, err := creditIns.Mint(txAuth, comm.Addr1, order.TotalValue)
+	tx, err := creditIns.Mint(txAuth, eth.Addr1, order.TotalValue)
 	if err != nil {
 		t.Error("mint credit err:", err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("wait tx err:", err)
 	}
 
 	// approve must be done by the user before create an order
-	t.Log("user approving credit to market..")
-	tx, err = creditIns.Approve(txAuth, marketAddr, order.TotalValue)
+	t.Log("user approving credit to market.., approve value: ", order.TotalValue)
+	tx, err = creditIns.Approve(txAuth, MarketAddr, order.TotalValue)
 	if err != nil {
 		t.Error(err)
 	}
 	// wait for tx to be ok
 	t.Log("waiting tx")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
+
+	// check credit balance of market contract before create order
+	b_before, err := creditIns.BalanceOf(&bind.CallOpts{}, MarketAddr)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("market balance before create order:", b_before.String())
 
 	// create order
-	t.Log("call create order")
-	tx, err = marketIns.CreateOrder(txAuth, creditAddr, comm.Addr2, order)
+	t.Log("call create order, order totalValue: ", order.TotalValue)
+	tx, err = marketIns.CreateOrder(txAuth, CreditAddr, eth.Addr2, order)
 	if err != nil {
 		t.Error(err)
 	}
 	// wait for tx to be ok
 	t.Log("waiting tx")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error(err)
 	}
 
-	receipt := comm.GetTransactionReceipt(comm.Endpoint, tx.Hash())
-	t.Log("gas used:", receipt.GasUsed)
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("create order gas used:", receipt.GasUsed)
 
 	// check credit balance of market contract after create order
-	b, err := creditIns.BalanceOf(&bind.CallOpts{}, marketAddr)
+	b_after, err := creditIns.BalanceOf(&bind.CallOpts{}, MarketAddr)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log("market balance after create order:", b.String())
-	if b.Cmp(order.Remain) != 0 {
-		t.Error("the balance of market contract is incorrect")
+	t.Log("market balance after create order:", b_after.String())
+
+	delta := new(big.Int).Sub(b_after, b_before)
+	t.Log("market balance increase:", delta)
+	t.Log("order total value:", order.TotalValue)
+
+	if delta.Cmp(order.TotalValue) != 0 {
+		t.Error("the balance increament of market contract is incorrect")
 	}
 }
 
 func TestGetOrder(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get market instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
+	marketIns, err := market.NewMarket(MarketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
 	// call
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -228,38 +185,42 @@ func TestGetOrder(t *testing.T) {
 }
 
 // test provider activate an order
+// gas:112490
 func TestActivate(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
+	marketIns, err := market.NewMarket(MarketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// provider call activate with user as param
 	t.Log("provider activate an order")
-	tx, err := marketIns.Activate(txAuth, comm.Addr1)
+	tx, err := marketIns.Activate(txAuth, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("deploy contract err:", err)
 	}
 
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("activate order gas used:", receipt.GasUsed)
+
 	// get order
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -272,49 +233,59 @@ func TestActivate(t *testing.T) {
 }
 
 // test provider settle
+// gas:55216 ~ 81422
 func TestProSettle(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
+	marketIns, err := market.NewMarket(MarketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
 	// make auth for provider
-	txAuth, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
 
+	// set gas for calling settle, in case the estimated gas is incorrect sometimes
+	txAuth.GasLimit = 100000
+
 	// get order before
-	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("order info:", orderBefore)
 
+	// control nowtime to cross probation or not
+	//time.Sleep(5 * time.Second)
+
 	// call settle
-	t.Log("provider settle an order")
-	tx, err := marketIns.ProSettle(txAuth, comm.Addr1)
+	t.Log("provider settle an order, 1st ====>")
+	tx, err := marketIns.ProSettle(txAuth, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	t.Log("waiting for tx to be ok, txHash:", tx.Hash())
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("call settle err:", err)
 	}
 
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("proSettle gas used:", receipt.GasUsed)
+
 	// get order after
-	orderAfter, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderAfter, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log("order info:", orderAfter)
+	t.Log("order info(after):", orderAfter)
 
 	nowTime := new(big.Int).Set(orderAfter.LastSettleTime)
 	probationTime := new(big.Int).Add(orderAfter.ActivateTime, orderAfter.Probation)
@@ -348,36 +319,39 @@ func TestProSettle(t *testing.T) {
 
 	// -------------------
 
-	t.Log("waiting for the probation to be over, 10s...")
+	t.Log("--------------- waiting for the probation to be over...")
 	// wait for the probation to be over
-	time.Sleep(10 * time.Second)
+	//time.Sleep(5 * time.Second)
 
 	// get order before
-	orderBefore, err = marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderBefore, err = marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("order info:", orderBefore)
 
 	// call settle
-	t.Log("provider settle an order")
-	tx, err = marketIns.ProSettle(txAuth, comm.Addr1)
+	t.Log("provider settle an order, 2nd ====>")
+	tx, err = marketIns.ProSettle(txAuth, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	t.Log("waiting for tx to be ok, tx hash:", tx.Hash())
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
 		t.Error("call settle err:", err)
 	}
 
+	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("proSettle gas used:", receipt.GasUsed)
+
 	// get order after
-	orderAfter, err = marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderAfter, err = marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log("order info:", orderAfter)
+	t.Log("order info(after):", orderAfter)
 
 	nowTime = new(big.Int).Set(orderAfter.LastSettleTime)
 	probationTime = new(big.Int).Add(orderAfter.ActivateTime, orderAfter.Probation)
@@ -412,38 +386,39 @@ func TestProSettle(t *testing.T) {
 }
 
 // test provider withdraw from remuneration
+// gas:89931
 func TestProWithdraw(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get token instance
-	creditIns, err := credit.NewCredit(creditAddr, backend)
+	creditIns, err := credit.NewCredit(CreditAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
 	// get old provider credit
-	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{}, comm.Addr2)
+	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{}, eth.Addr2)
 	if err != nil {
 		t.Error("get provider balance failed:", err)
 	}
 	t.Log("provider old balance:", oldBal)
 
 	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
+	marketIns, err := market.NewMarket(MarketAddr, backend)
 	if err != nil {
 		t.Error("new contract instance failed:", err)
 	}
 
 	// get order info before call
-	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK2)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -455,18 +430,21 @@ func TestProWithdraw(t *testing.T) {
 	}
 	// provider call withdraw with user as param
 	t.Log("provider withdraw")
-	tx, err := marketIns.ProWithdraw(txAuth, creditAddr, comm.Addr1, amount)
+	tx, err := marketIns.ProWithdraw(txAuth, CreditAddr, eth.Addr1, amount)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
-		t.Error("user withdraw err:", err)
+		t.Error("provider withdraw err:", err)
 	}
 
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("proWithdraw gas used:", receipt.GasUsed)
+
 	// get order info after proWithdraw
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -476,7 +454,7 @@ func TestProWithdraw(t *testing.T) {
 	remuDecre := new(big.Int).Sub(orderBefore.Remuneration, orderInfo.Remuneration)
 
 	// check new provider credit balance
-	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr2}, comm.Addr2)
+	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
 	if err != nil {
 		t.Error("get credit balance of provider error")
 	}
@@ -500,56 +478,60 @@ func TestProWithdraw(t *testing.T) {
 }
 
 // test user cancel order
+// gas:105098
 func TestUserCancel(t *testing.T) {
 	// connect to an eth node with ep
-	backend, chainID := comm.ConnETH(comm.Endpoint)
+	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// get contract instance
-	marketIns, err := market.NewMarket(marketAddr, backend)
+	marketIns, err := market.NewMarket(MarketAddr, backend)
 	if err != nil {
 		t.Error("new market instance failed:", err)
 	}
 
 	// get credit instance
-	creditIns, err := credit.NewCredit(creditAddr, backend)
+	creditIns, err := credit.NewCredit(CreditAddr, backend)
 	if err != nil {
 		t.Error("new token instance failed:", err)
 	}
 
 	// get balance of user before cancel order
-	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr1}, comm.Addr1)
+	oldBal, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr1}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("old balance of user:", oldBal)
 
 	// get order info before call user cancel
-	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderBefore, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// make auth for sending transaction
-	txAuth, err := comm.MakeAuth(chainID, comm.SK1)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// user cancel order, remain value is refunded to user
 	t.Log("user cancels an order")
-	tx, err := marketIns.UserCancel(txAuth, creditAddr, comm.Addr2)
+	tx, err := marketIns.UserCancel(txAuth, CreditAddr, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
 	t.Log("waiting for tx to be ok")
-	err = comm.CheckTx(comm.Endpoint, tx.Hash(), "")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 	if err != nil {
-		t.Error("deploy contract err:", err)
+		t.Error("user cancel err:", err)
 	}
 
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("user cancel gas used:", receipt.GasUsed)
+
 	// check status
-	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: comm.Addr1}, comm.Addr2)
+	orderInfo, err := marketIns.GetOrder(&bind.CallOpts{From: eth.Addr1}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -566,7 +548,7 @@ func TestUserCancel(t *testing.T) {
 	}
 
 	// check user token balance
-	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: comm.Addr1}, comm.Addr1)
+	newBal, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr1}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
