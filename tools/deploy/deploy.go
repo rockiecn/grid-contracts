@@ -20,8 +20,8 @@ func main() {
 	backend, chainID := eth.ConnETH(eth.Endpoint)
 	logger.Info("chain id:", chainID)
 
-	// make auth for sending transaction
-	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	// make auth for sending transaction with admin
+	txAuth, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		logger.Panic(err)
 	}
@@ -125,6 +125,8 @@ func main() {
 		Registry: _registryAddr.Hex(),
 	}
 	eth.Save(a, "../../eth/contracts.json")
+
+	logger.Info("all contract deployed, addresses are saved in eth/contracts.json")
 }
 
 /*

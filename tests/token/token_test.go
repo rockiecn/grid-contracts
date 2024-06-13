@@ -24,13 +24,13 @@ func TestDeploy(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// deploy Token contract
-	_tokenAddr, tx, _, err := gtoken.DeployGtoken(txAuth, client)
+	_tokenAddr, tx, _, err := gtoken.DeployGtoken(authAdmin, client)
 	if err != nil {
 		t.Error("deploy token err:", err)
 	}
@@ -62,13 +62,13 @@ func TestMint(t *testing.T) {
 	}
 
 	// make auth to sign and send tx
-	txAuth1, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
 
-	// get balance of addr2
-	bal1, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	// get balance of provider
+	bal1, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -81,7 +81,7 @@ func TestMint(t *testing.T) {
 	}
 
 	// call token mint
-	tx, err := tokenIns.Mint(txAuth1, eth.Addr2, amount)
+	tx, err := tokenIns.Mint(authAdmin, eth.Addr2, amount)
 	if err != nil {
 		t.Error("call mint err:", err)
 	}
@@ -94,7 +94,7 @@ func TestMint(t *testing.T) {
 	}
 
 	// get balance of addr2
-	bal2, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	bal2, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -117,14 +117,18 @@ func TestTransfer(t *testing.T) {
 	}
 
 	// make auth to sign and send tx
-	txAuth1, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
+	if err != nil {
+		t.Error(err)
+	}
+	authUser, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	mintAmount, _ := new(big.Int).SetString("1000000000000000000", 10)
 	// mint some token for acc1
-	tx, err := tokenIns.Mint(txAuth1, eth.Addr1, mintAmount)
+	tx, err := tokenIns.Mint(authAdmin, eth.Addr1, mintAmount)
 	if err != nil {
 		t.Error("call mint err:", err)
 	}
@@ -135,12 +139,12 @@ func TestTransfer(t *testing.T) {
 		t.Error(err)
 	}
 
-	// get balance of addr2
-	bal1, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	// get balance of user
+	bal1, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log("balanceof acc2:", bal1)
+	t.Log("balanceof user:", bal1)
 
 	// 0.02 eth to transfer
 	amount, ok := new(big.Int).SetString("20000000000000000", 10)
@@ -150,7 +154,7 @@ func TestTransfer(t *testing.T) {
 
 	// call
 	t.Log("calling transfer")
-	tx, err = tokenIns.Transfer(txAuth1, eth.Addr2, amount)
+	tx, err = tokenIns.Transfer(authUser, eth.Addr2, amount)
 	if err != nil {
 		t.Error("call contract err:", err)
 	}
@@ -162,11 +166,11 @@ func TestTransfer(t *testing.T) {
 	}
 
 	// get balance of addr2
-	bal2, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	bal2, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
-	t.Log("new balanceof acc2:", bal2)
+	t.Log("new balanceof provider:", bal2)
 
 	if bal2.String() != "30000000000000000" {
 		t.Error("balance error")

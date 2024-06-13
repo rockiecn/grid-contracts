@@ -18,6 +18,7 @@ contract Registry {
 
     // cp info
     struct Info{
+        address addr;
         string ip;
         string domain;
         string port;
@@ -33,6 +34,7 @@ contract Registry {
      * @param cpu value of cpu
      */
     function set(string memory ip, string memory domain, string memory port, uint64 cpu,  uint64 gpu,  uint64 mem,  uint64 disk) public {
+        registry[msg.sender].addr=msg.sender;
         registry[msg.sender].ip=ip;
         registry[msg.sender].domain=domain;
         registry[msg.sender].port=port;

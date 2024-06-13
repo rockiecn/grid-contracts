@@ -32,7 +32,7 @@ func TestDeploy(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -84,12 +84,12 @@ func TestPledge(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth1, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
 
-	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
+	authUser, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -102,7 +102,7 @@ func TestPledge(t *testing.T) {
 
 	// mint some token for approve
 	t.Log("mint token to user")
-	tx, err := tokenIns.Mint(txAuth1, eth.Addr2, amount)
+	tx, err := tokenIns.Mint(authAdmin, eth.Addr1, amount)
 	if err != nil {
 		t.Error("mint token err:", err)
 	}
@@ -114,7 +114,7 @@ func TestPledge(t *testing.T) {
 
 	// acc2 approve to pledge contract before pledge
 	t.Log("user approving..")
-	tx, err = tokenIns.Approve(txAuth2, pledgeAddr, amount)
+	tx, err = tokenIns.Approve(authUser, pledgeAddr, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -126,13 +126,13 @@ func TestPledge(t *testing.T) {
 	}
 
 	// for address2, check old value
-	opts2 := &bind.CallOpts{From: eth.Addr2}
+	opts1 := &bind.CallOpts{From: eth.Addr1}
 
-	oldPledge, err := pledgeIns.GetPledge(opts2)
+	oldPledge, err := pledgeIns.GetPledge(opts1)
 	if err != nil {
 		t.Error(err)
 	}
-	oldBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
+	oldBalance, err := tokenIns.BalanceOf(opts1, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -142,7 +142,7 @@ func TestPledge(t *testing.T) {
 
 	// acc2 pledge amount
 	t.Log("user pledging..")
-	tx, err = pledgeIns.Pledge(txAuth2, tokenAddr, amount)
+	tx, err = pledgeIns.Pledge(authUser, tokenAddr, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -153,11 +153,11 @@ func TestPledge(t *testing.T) {
 		t.Error("pledge err:", err)
 	}
 
-	newPledge, err := pledgeIns.GetPledge(opts2)
+	newPledge, err := pledgeIns.GetPledge(opts1)
 	if err != nil {
 		t.Error(err)
 	}
-	newBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
+	newBalance, err := tokenIns.BalanceOf(opts1, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -196,19 +196,19 @@ func TestUnPledge(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
+	authUser, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
 
-	// for address2
-	opts2 := &bind.CallOpts{From: eth.Addr2}
+	// for user
+	opts1 := &bind.CallOpts{From: eth.Addr1}
 
-	oldPledge, err := pledgeIns.GetPledge(opts2)
+	oldPledge, err := pledgeIns.GetPledge(opts1)
 	if err != nil {
 		t.Error(err)
 	}
-	oldBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
+	oldBalance, err := tokenIns.BalanceOf(opts1, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -224,7 +224,7 @@ func TestUnPledge(t *testing.T) {
 
 	// acc2 pledge amount
 	t.Log("user unpledging..")
-	tx, err := pledgeIns.Unpledge(txAuth2, tokenAddr, amount)
+	tx, err := pledgeIns.Unpledge(authUser, tokenAddr, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -235,11 +235,11 @@ func TestUnPledge(t *testing.T) {
 		t.Error("pledge err:", err)
 	}
 
-	newPledge, err := pledgeIns.GetPledge(opts2)
+	newPledge, err := pledgeIns.GetPledge(opts1)
 	if err != nil {
 		t.Error(err)
 	}
-	newBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
+	newBalance, err := tokenIns.BalanceOf(opts1, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -278,19 +278,19 @@ func TestWithdrawInterest(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
+	authUser, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// for address2
-	opts2 := &bind.CallOpts{From: eth.Addr2}
+	opts1 := &bind.CallOpts{From: eth.Addr1}
 
-	oldInterest, err := pledgeIns.GetInterest(opts2)
+	oldInterest, err := pledgeIns.GetInterest(opts1)
 	if err != nil {
 		t.Error(err)
 	}
-	oldBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
+	oldBalance, err := tokenIns.BalanceOf(opts1, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -299,7 +299,7 @@ func TestWithdrawInterest(t *testing.T) {
 	t.Log("old balance:", oldBalance)
 
 	// update interest
-	tx, err := pledgeIns.UpdateInterest(txAuth2)
+	tx, err := pledgeIns.UpdateInterest(authUser)
 	if err != nil {
 		t.Error(err)
 	}
@@ -318,7 +318,7 @@ func TestWithdrawInterest(t *testing.T) {
 
 	// acc2 withdraw interest
 	t.Log("user withdrawing..")
-	tx, err = pledgeIns.WithdrawInterest(txAuth2, tokenAddr, amount)
+	tx, err = pledgeIns.WithdrawInterest(authUser, tokenAddr, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -329,11 +329,11 @@ func TestWithdrawInterest(t *testing.T) {
 		t.Error("withdraw err:", err)
 	}
 
-	newInterest, err := pledgeIns.GetInterest(opts2)
+	newInterest, err := pledgeIns.GetInterest(opts1)
 	if err != nil {
 		t.Error(err)
 	}
-	newBalance, err := tokenIns.BalanceOf(opts2, eth.Addr2)
+	newBalance, err := tokenIns.BalanceOf(opts1, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -361,12 +361,12 @@ func TestSetRate(t *testing.T) {
 	}
 
 	// make auth for sending transaction
-	txAuth1, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
 
-	oldRate, err := pledgeIns.GetRate(&bind.CallOpts{From: eth.Addr1})
+	oldRate, err := pledgeIns.GetRate(&bind.CallOpts{})
 	if err != nil {
 		t.Error(err)
 	}
@@ -377,7 +377,7 @@ func TestSetRate(t *testing.T) {
 		t.Error("set string error")
 	}
 	// set reate
-	tx, err := pledgeIns.SetRate(txAuth1, rate)
+	tx, err := pledgeIns.SetRate(authAdmin, rate)
 	if err != nil {
 		t.Error(err)
 	}
@@ -389,7 +389,7 @@ func TestSetRate(t *testing.T) {
 	}
 
 	// get new rate
-	newRate, err := pledgeIns.GetRate(&bind.CallOpts{From: eth.Addr1})
+	newRate, err := pledgeIns.GetRate(&bind.CallOpts{})
 	if err != nil {
 		t.Error(err)
 	}

@@ -22,8 +22,8 @@ func TestDeploy(t *testing.T) {
 	client, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
-	// make auth for sending transaction
-	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	// make auth for sending transaction with admin
+	txAuth, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -79,7 +79,7 @@ func TestSet(t *testing.T) {
 		t.Error("new token instance failed:", err)
 	}
 
-	// register for acc2
+	// register a cp
 	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
@@ -96,7 +96,7 @@ func TestSet(t *testing.T) {
 	eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 
 	// get reg info
-	regInfo, err := contractIns.Get(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	regInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}
@@ -137,7 +137,7 @@ func TestUpdate(t *testing.T) {
 		t.Error("new token instance failed:", err)
 	}
 
-	// register for acc2
+	// auth for cp
 	txAuth2, err := eth.MakeAuth(chainID, eth.SK2)
 	if err != nil {
 		t.Error(err)
@@ -153,8 +153,8 @@ func TestUpdate(t *testing.T) {
 	t.Log("waiting for tx to be ok")
 	eth.CheckTx(eth.Endpoint, tx.Hash(), "")
 
-	// get reg info
-	regInfo, err := contractIns.Get(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	// get reg info of cp
+	regInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
 	if err != nil {
 		t.Error(err)
 	}

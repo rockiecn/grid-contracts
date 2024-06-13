@@ -27,7 +27,7 @@ func TestLoad(t *testing.T) {
 	t.Log("test load addresses")
 
 	// loading
-	a := eth.Load("./address.json")
+	a := eth.Load("./contracts.json")
 	t.Logf("%+v\n", a)
 
 	if a.Market == "" || a.Access == "" || a.Credit == "" {
@@ -52,8 +52,13 @@ func TestCreateOrder(t *testing.T) {
 		t.Error("new contract instance failed:", err)
 	}
 
-	// make auth for sending transaction
-	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	// auth for admin
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
+	if err != nil {
+		t.Error(err)
+	}
+	// auth for user
+	authUser, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -101,8 +106,8 @@ func TestCreateOrder(t *testing.T) {
 		t.Error(err)
 	}
 	// mint some credit for approve
-	t.Log("admin mint credit to user")
-	tx, err := creditIns.Mint(txAuth, eth.Addr1, order.TotalValue)
+	t.Log("admin mint some credit to user for create order")
+	tx, err := creditIns.Mint(authAdmin, eth.Addr1, order.TotalValue)
 	if err != nil {
 		t.Error("mint credit err:", err)
 	}
@@ -114,7 +119,7 @@ func TestCreateOrder(t *testing.T) {
 
 	// approve must be done by the user before create an order
 	t.Log("user approving credit to market.., approve value: ", order.TotalValue)
-	tx, err = creditIns.Approve(txAuth, MarketAddr, order.TotalValue)
+	tx, err = creditIns.Approve(authUser, MarketAddr, order.TotalValue)
 	if err != nil {
 		t.Error(err)
 	}
@@ -133,8 +138,8 @@ func TestCreateOrder(t *testing.T) {
 	t.Log("market balance before create order:", b_before.String())
 
 	// create order
-	t.Log("call create order, order totalValue: ", order.TotalValue)
-	tx, err = marketIns.CreateOrder(txAuth, CreditAddr, eth.Addr2, order)
+	t.Log("user call create order, order totalValue: ", order.TotalValue)
+	tx, err = marketIns.CreateOrder(authUser, CreditAddr, eth.Addr2, order)
 	if err != nil {
 		t.Error(err)
 	}

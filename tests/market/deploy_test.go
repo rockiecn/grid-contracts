@@ -18,7 +18,7 @@ func TestDeploy(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	txAuth, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -61,7 +61,7 @@ func TestDeploy(t *testing.T) {
 	// set access for admin
 	// gas:69043
 	t.Log("set access for admin")
-	tx, err = accessIns.Set(txAuth, eth.Addr1, true)
+	tx, err = accessIns.Set(txAuth, eth.Addr0, true)
 	if err != nil {
 		t.Error(err)
 	}

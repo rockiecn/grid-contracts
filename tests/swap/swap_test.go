@@ -36,13 +36,13 @@ func TestDeploy(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	txAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
 
 	// deploy access contract
-	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, backend)
+	_accessAddr, tx, accessIns, err := access.DeployAccess(authAdmin, backend)
 	if err != nil {
 		t.Error("deploy access err:", err)
 	}
@@ -55,7 +55,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	// deploy credit contract, access contract is needed
-	_creditAddr, tx, _, err := credit.DeployCredit(txAuth, backend, accessAddr)
+	_creditAddr, tx, _, err := credit.DeployCredit(authAdmin, backend, accessAddr)
 	if err != nil {
 		t.Error("deploy credit err:", err)
 	}
@@ -68,7 +68,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	// deploy gtoken contract
-	_tokenAddr, tx, tokenIns, err := gtoken.DeployGtoken(txAuth, backend)
+	_tokenAddr, tx, tokenIns, err := gtoken.DeployGtoken(authAdmin, backend)
 	if err != nil {
 		t.Error("deploy gtoken err:", err)
 	}
@@ -81,7 +81,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	// deploy swap contract
-	_swapAddr, tx, _, err := swap.DeploySwap(txAuth, backend, creditAddr, tokenAddr, rate_num, rate_den)
+	_swapAddr, tx, _, err := swap.DeploySwap(authAdmin, backend, creditAddr, tokenAddr, rate_num, rate_den)
 	if err != nil {
 		t.Error("deploy swap err:", err)
 	}
@@ -96,7 +96,7 @@ func TestDeploy(t *testing.T) {
 	// admin transfer some token to swap contract
 	amount := new(big.Int).SetUint64(10000)
 	t.Log("transfering some gtoken to swap")
-	tx, err = tokenIns.Transfer(txAuth, swapAddr, amount)
+	tx, err = tokenIns.Transfer(authAdmin, swapAddr, amount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -108,7 +108,7 @@ func TestDeploy(t *testing.T) {
 
 	// set access for admin and swap contract
 	t.Log("set access for admin")
-	tx, err = accessIns.Set(txAuth, eth.Addr1, true)
+	tx, err = accessIns.Set(authAdmin, eth.Addr0, true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -119,7 +119,7 @@ func TestDeploy(t *testing.T) {
 	}
 
 	t.Log("set access for swap contract")
-	tx, err = accessIns.Set(txAuth, swapAddr, true)
+	tx, err = accessIns.Set(authAdmin, swapAddr, true)
 	if err != nil {
 		t.Error(err)
 	}
@@ -143,11 +143,11 @@ func TestBuy(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	adminAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
-	userAuth, err := eth.MakeAuth(chainID, eth.SK2)
+	authUser, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -160,7 +160,7 @@ func TestBuy(t *testing.T) {
 	// mint 10 credit
 	t.Log("admin mint credit to user")
 	credit := new(big.Int).SetUint64(10)
-	tx, err := creditIns.Mint(adminAuth, eth.Addr2, credit)
+	tx, err := creditIns.Mint(authAdmin, eth.Addr1, credit)
 	if err != nil {
 		t.Error(err)
 	}
@@ -171,7 +171,7 @@ func TestBuy(t *testing.T) {
 		t.Error("deploy contract err:", err)
 	}
 	// check credit
-	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -185,7 +185,7 @@ func TestBuy(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -194,7 +194,7 @@ func TestBuy(t *testing.T) {
 	// user approve to swap before buy
 	buyAmount := new(big.Int).SetUint64(4)
 	t.Log("user approving to swap")
-	tx, err = creditIns.Approve(userAuth, swapAddr, buyAmount)
+	tx, err = creditIns.Approve(authUser, swapAddr, buyAmount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -210,7 +210,7 @@ func TestBuy(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("user buy gtoken with credit amount:", buyAmount)
-	tx, err = swapIns.Buy(userAuth, buyAmount)
+	tx, err = swapIns.Buy(authUser, buyAmount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -223,7 +223,7 @@ func TestBuy(t *testing.T) {
 	// check balance after
 
 	// user's credit balance
-	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -234,7 +234,7 @@ func TestBuy(t *testing.T) {
 	}
 
 	// user's gtoken balance
-	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -256,7 +256,7 @@ func TestSell(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	userAuth, err := eth.MakeAuth(chainID, eth.SK2)
+	authUser, err := eth.MakeAuth(chainID, eth.SK1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -267,7 +267,7 @@ func TestSell(t *testing.T) {
 	}
 
 	// check credit before sell
-	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	creditBefore, err := creditIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -278,7 +278,7 @@ func TestSell(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	tokenBefore, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -287,7 +287,7 @@ func TestSell(t *testing.T) {
 	// user approve to gtoken before sell, sell 20 token for 2 credit
 	sellAmount := new(big.Int).SetUint64(20)
 	t.Log("user approving some token to swap")
-	tx, err := tokenIns.Approve(userAuth, swapAddr, sellAmount)
+	tx, err := tokenIns.Approve(authUser, swapAddr, sellAmount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -303,7 +303,7 @@ func TestSell(t *testing.T) {
 		t.Error(err)
 	}
 	t.Log("user sell gtoken for credit:", sellAmount)
-	tx, err = swapIns.Sell(userAuth, sellAmount)
+	tx, err = swapIns.Sell(authUser, sellAmount)
 	if err != nil {
 		t.Error(err)
 	}
@@ -316,7 +316,7 @@ func TestSell(t *testing.T) {
 	// check balance after
 
 	// user's credit balance
-	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	creditAfer, err := creditIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -330,7 +330,7 @@ func TestSell(t *testing.T) {
 	}
 
 	// gtoken balance
-	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+	tokenAfter, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -350,7 +350,7 @@ func TestSettle(t *testing.T) {
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
-	adminAuth, err := eth.MakeAuth(chainID, eth.SK1)
+	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -372,7 +372,7 @@ func TestSettle(t *testing.T) {
 	t.Log("balance in swap before settle:", balInSwap)
 
 	// token balance of admin before settle
-	balBefore, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
+	balBefore, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr0)
 	if err != nil {
 		t.Error(err)
 	}
@@ -380,7 +380,7 @@ func TestSettle(t *testing.T) {
 
 	// admin call settlement
 	t.Log("admin call settlement")
-	tx, err := swapIns.SettlementToken(adminAuth)
+	tx, err := swapIns.SettlementToken(authAdmin)
 	if err != nil {
 		t.Error(err)
 	}
@@ -391,7 +391,7 @@ func TestSettle(t *testing.T) {
 	}
 
 	// token balance after settle
-	balAfter, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr1)
+	balAfter, err := tokenIns.BalanceOf(&bind.CallOpts{}, eth.Addr0)
 	if err != nil {
 		t.Error(err)
 	}
