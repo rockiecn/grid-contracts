@@ -27,13 +27,16 @@ contract Registry {
         Resources avail; // available resources
     }
 
+    // store all cp info
     mapping(address => Info) registry;
+    // store all keys of cp(address)
+    address[] private keys;
 
     /**
-     * @dev set cp info
+     * @dev register cp info
      * @param cpu value of cpu
      */
-    function set(string memory ip, string memory domain, string memory port, uint64 cpu,  uint64 gpu,  uint64 mem,  uint64 disk) public {
+    function register(string memory ip, string memory domain, string memory port, uint64 cpu,  uint64 gpu,  uint64 mem,  uint64 disk) public {
         registry[msg.sender].addr=msg.sender;
         registry[msg.sender].ip=ip;
         registry[msg.sender].domain=domain;
@@ -48,6 +51,8 @@ contract Registry {
         registry[msg.sender].avail.GPU=gpu;
         registry[msg.sender].avail.MEM=mem;
         registry[msg.sender].avail.DISK=disk;
+
+        keys.push(msg.sender);
     }
 
     /**
@@ -56,6 +61,13 @@ contract Registry {
      */
     function get(address a) public view returns (Info memory){
         return registry[a];
+    }
+
+      /**
+     * @dev get the cp keys
+     */
+    function getKeys() external view returns(address[] memory) {
+        return keys;
     }
 
     /**

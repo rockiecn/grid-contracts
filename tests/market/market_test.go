@@ -169,6 +169,26 @@ func TestCreateOrder(t *testing.T) {
 	}
 }
 
+func TestGetKeys(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := eth.ConnETH(eth.Endpoint)
+	t.Log("chain id:", chainID)
+
+	// get market instance
+	marketIns, err := market.NewMarket(MarketAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// call
+	keys, err := marketIns.GetKeys(&bind.CallOpts{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("keys:", keys)
+}
+
 func TestGetOrder(t *testing.T) {
 	// connect to an eth node with ep
 	backend, chainID := eth.ConnETH(eth.Endpoint)
@@ -235,6 +255,7 @@ func TestActivate(t *testing.T) {
 	if orderInfo.Status != 1 {
 		t.Error("activate failed, status not 1")
 	}
+
 }
 
 // test provider settle

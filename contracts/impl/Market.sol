@@ -63,6 +63,8 @@ contract Market {
 
     // record all orders for every user/provider pair
     mapping(address => mapping(address => Order)) orders;
+    // record all keys for every order
+    address[] private keys;
 
     // constructor
     constructor() {
@@ -85,6 +87,8 @@ contract Market {
 
         // store order
         orders[msg.sender][provider] = order;
+        // record the order key
+        keys.push(msg.sender);
     }
 
     /**
@@ -92,6 +96,13 @@ contract Market {
      */
     function getOrder(address provider) external view returns(Order memory) {
         return orders[msg.sender][provider];
+    }
+
+     /**
+     * @dev get the order keys
+     */
+    function getKeys() external view returns(address[] memory) {
+        return keys;
     }
 
     // calc the totalvalue of an order

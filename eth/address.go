@@ -36,9 +36,9 @@ func Save(a Address, pathName string) {
 }
 
 // load local json
-func LoadLocal() Address {
+func LoadJSON() Address {
 	// load file
-	b, err := os.ReadFile("./contracts.json")
+	b, err := os.ReadFile("../../grid-contracts/eth/contracts.json")
 	if err != nil {
 		fmt.Println("Error reading JSON:", err)
 		return Address{}

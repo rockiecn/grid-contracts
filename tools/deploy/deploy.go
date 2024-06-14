@@ -64,7 +64,7 @@ func main() {
 	// set access for admin
 	// gas:65143
 	logger.Info("set access for admin")
-	tx, err = accessIns.Set(txAuth, eth.Addr1, true)
+	tx, err = accessIns.Set(txAuth, eth.Addr0, true)
 	if err != nil {
 		logger.Panic(err)
 	}

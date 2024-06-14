@@ -68,7 +68,7 @@ func TestGet(t *testing.T) {
 	t.Log("registry info:", regInfo)
 }
 
-func TestSet(t *testing.T) {
+func TestRegister(t *testing.T) {
 	// connect to an eth node with ep
 	backend, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
@@ -86,7 +86,7 @@ func TestSet(t *testing.T) {
 	}
 
 	// call registry's Set method
-	tx, err := contractIns.Set(txAuth2, "123.123.123.0", "test domain", "123", 11, 22, 33, 44)
+	tx, err := contractIns.Register(txAuth2, "123.123.123.0", "test domain", "123", 11, 22, 33, 44)
 	if err != nil {
 		t.Error(err)
 	}
@@ -124,6 +124,26 @@ func TestSet(t *testing.T) {
 	if regInfo.Total.DISK != 44 {
 		t.Error("disk is error")
 	}
+}
+
+func TestGetKeys(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := eth.ConnETH(eth.Endpoint)
+	t.Log("chain id:", chainID)
+
+	// get registry instance
+	registryIns, err := registry.NewRegistry(contractAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
+	// call
+	keys, err := registryIns.GetKeys(&bind.CallOpts{})
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Log("keys:", keys)
 }
 
 func TestUpdate(t *testing.T) {
