@@ -61,10 +61,16 @@ contract Market {
         uint8 status;
     }
 
+    // key pair for orders'
+    struct Key{
+        address user;
+        address provider;
+    }
+
     // record all orders for every user/provider pair
     mapping(address => mapping(address => Order)) orders;
     // record all keys for every order
-    address[] private keys;
+    Key[] private keys;
 
     // constructor
     constructor() {
@@ -87,8 +93,8 @@ contract Market {
 
         // store order
         orders[msg.sender][provider] = order;
-        // record the order key
-        keys.push(msg.sender);
+        // record the order key(address pair of user and provider)
+        keys.push(Key(msg.sender, provider));
     }
 
     /**
@@ -101,7 +107,7 @@ contract Market {
      /**
      * @dev get the order keys
      */
-    function getKeys() external view returns(address[] memory) {
+    function getKeys() external view returns(Key[] memory) {
         return keys;
     }
 
