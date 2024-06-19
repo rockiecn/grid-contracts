@@ -10,12 +10,17 @@ contract Credit is ERC20, Ownable {
     // access contract address to manage mint right
     address public access;
 
+    //uint256 private _totalSupply; // 上限6亿；初始发行3亿
+    uint256 public constant initialSupply = 3 * 10**26;
+    uint256 public constant maxSupply = 6 * 10**26;
+
     // need access contract address
     constructor(address _a)
         ERC20("Credit", "CRE") //此处表示代币的名称和缩写
         Ownable()
     {
         access = _a;
+        _mint(msg.sender, initialSupply);
     }
 
 

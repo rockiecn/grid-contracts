@@ -16,11 +16,12 @@ import (
 )
 
 var (
-	checkTxSleepTime = 6 // 先等待6s（出块时间加1）
-	nextBlockTime    = 5 // 出块时间5s
-	defaultGasPrice  = int64(2000)
+	checkTxSleepTime = 6                 // 先等待6s（出块时间加1）
+	nextBlockTime    = 5                 // 出块时间5s
+	defaultGasPrice  = int64(1000000000) // default gasprice to 1g
 )
 
+// make auth to send tx with sk
 func MakeAuth(chainID *big.Int, hexSk string) (*bind.TransactOpts, error) {
 	auth := &bind.TransactOpts{}
 	sk, err := crypto.HexToECDSA(hexSk)
@@ -59,7 +60,7 @@ func CheckTx(endPoint string, txHash common.Hash, name string) error {
 	var receipt *types.Receipt
 
 	t := checkTxSleepTime
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 50; i++ {
 		if i != 0 {
 			t = nextBlockTime * i
 		}

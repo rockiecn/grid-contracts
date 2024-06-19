@@ -2,6 +2,7 @@
 package main
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/grid/contracts/eth"
@@ -14,7 +15,7 @@ func TestDeploy(t *testing.T) {
 	t.Log("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := eth.ConnETH(eth.Endpoint)
+	endpoint, chainID := eth.ConnETH(eth.Endpoint)
 	t.Log("chain id:", chainID)
 
 	// make auth for sending transaction
@@ -23,12 +24,17 @@ func TestDeploy(t *testing.T) {
 		t.Error(err)
 	}
 
+	//
+	txAuth.GasLimit = 4000000
+	// 2 gwei
+	txAuth.GasPrice = new(big.Int).SetUint64(2000000000)
+
 	// deploy market contract
 	// gas: 3428839
 	t.Log("deploying market..")
-	_marketAddr, tx, _, err := market.DeployMarket(txAuth, backend)
+	_marketAddr, tx, _, err := market.DeployMarket(txAuth, endpoint)
 	if err != nil {
-		t.Error("deploy registry err:", err)
+		t.Error("deploy market err:", err)
 	}
 
 	t.Log("created market address: ", _marketAddr.Hex())
@@ -44,7 +50,7 @@ func TestDeploy(t *testing.T) {
 	// deploy access contract
 	// gas:494259
 	t.Log("deploying access")
-	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, backend)
+	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, endpoint)
 	if err != nil {
 		t.Error("deploy access err:", err)
 	}
@@ -77,7 +83,7 @@ func TestDeploy(t *testing.T) {
 	// deploy credit contract
 	// gas:1767526
 	t.Log("deploying credit contract")
-	_creditAddr, tx, _, err := credit.DeployCredit(txAuth, backend, _accessAddr)
+	_creditAddr, tx, _, err := credit.DeployCredit(txAuth, endpoint, _accessAddr)
 	if err != nil {
 		t.Error("deploy credit err:", err)
 	}

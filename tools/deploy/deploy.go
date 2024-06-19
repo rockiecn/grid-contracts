@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"math/big"
+
 	"github.com/grid/contracts/go/access"
 	"github.com/grid/contracts/go/credit"
 	"github.com/grid/contracts/go/market"
@@ -26,13 +29,20 @@ func main() {
 		logger.Panic(err)
 	}
 
+	//
+	txAuth.GasLimit = 5000000
+	// 2 gwei
+	txAuth.GasPrice = new(big.Int).SetUint64(2000000000)
+
 	// deploy market contract
 	// gas: 3428839
 	logger.Info("deploying market..")
 	_marketAddr, tx, _, err := market.DeployMarket(txAuth, backend)
 	if err != nil {
-		logger.Panic("deploy registry err:", err)
+		logger.Panic("deploy market err:", err)
 	}
+
+	logger.Info("tx hash:", tx.Hash())
 
 	logger.Info("created market address: ", _marketAddr.Hex())
 	logger.Info("waiting for tx to be ok")
@@ -126,7 +136,7 @@ func main() {
 	}
 	eth.Save(a, "../../eth/contracts.json")
 
-	logger.Info("all contract deployed, addresses are saved in eth/contracts.json")
+	fmt.Printf("\nAll contract deployed, addresses are saved in eth/contracts.json\n")
 }
 
 /*

@@ -6,7 +6,7 @@ pragma solidity >=0.8.2 <0.9.0;
  * @title Registry
  * @dev For cp registry
  * @custom:dev-run-script ./scripts/deploy_with_ethers.ts
- */
+*/
 contract Registry {
 
     struct Resources{
@@ -35,7 +35,7 @@ contract Registry {
     /**
      * @dev register cp info
      * @param cpu value of cpu
-     */
+    */
     function register(string memory ip, string memory domain, string memory port, uint64 cpu,  uint64 gpu,  uint64 mem,  uint64 disk) public {
         registry[msg.sender].addr=msg.sender;
         registry[msg.sender].ip=ip;
@@ -58,21 +58,21 @@ contract Registry {
     /**
      * @dev get cp info
      * @return all info of a cp
-     */
+    */
     function get(address a) public view returns (Info memory){
         return registry[a];
     }
 
-      /**
+    /**
      * @dev get the cp keys
-     */
+    */
     function getKeys() external view returns(address[] memory) {
         return keys;
     }
 
     /**
-     * @dev update avail with order info
-     */
+     * @dev update avail with order info, only called by market contract
+    */
     function update(uint64 cpu, uint64 gpu, uint64 mem, uint64 disk) public {
         assert(cpu <= registry[msg.sender].avail.CPU);
         assert(gpu <= registry[msg.sender].avail.GPU);
@@ -83,6 +83,13 @@ contract Registry {
         registry[msg.sender].avail.GPU -= gpu;
         registry[msg.sender].avail.MEM -= mem;
         registry[msg.sender].avail.DISK -= disk;
+    }
+
+    /**
+     * @dev provider revise self cp info, only called by cp himself
+    */
+    function revise() public {
+
     }
 
 }
