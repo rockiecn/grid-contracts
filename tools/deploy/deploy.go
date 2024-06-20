@@ -20,7 +20,7 @@ func main() {
 	logger.Info("connecting to eth:", eth.Endpoint)
 
 	// connect to an eth node with ep
-	backend, chainID := eth.ConnETH(eth.Endpoint)
+	endpoint, chainID := eth.ConnETH(eth.Endpoint)
 	logger.Info("chain id:", chainID)
 
 	// make auth for sending transaction with admin
@@ -34,30 +34,10 @@ func main() {
 	// 2 gwei
 	txAuth.GasPrice = new(big.Int).SetUint64(2000000000)
 
-	// deploy market contract
-	// gas: 3428839
-	logger.Info("deploying market..")
-	_marketAddr, tx, _, err := market.DeployMarket(txAuth, backend)
-	if err != nil {
-		logger.Panic("deploy market err:", err)
-	}
-
-	logger.Info("tx hash:", tx.Hash())
-
-	logger.Info("created market address: ", _marketAddr.Hex())
-	logger.Info("waiting for tx to be ok")
-	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
-	if err != nil {
-		logger.Panic("deploy contract err:", err)
-	}
-
-	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
-	logger.Info("deploy market gas used:", receipt.GasUsed)
-
 	// deploy access contract
 	// gas:495059
 	logger.Info("deploying access")
-	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, backend)
+	_accessAddr, tx, accessIns, err := access.DeployAccess(txAuth, endpoint)
 	if err != nil {
 		logger.Panic("deploy access err:", err)
 	}
@@ -68,7 +48,7 @@ func main() {
 		logger.Panic("deploy contract err:", err)
 	}
 
-	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	logger.Info("deploy access gas used:", receipt.GasUsed)
 
 	// set access for admin
@@ -90,7 +70,7 @@ func main() {
 	// deploy credit contract
 	// gas:1763026
 	logger.Info("deploying credit contract")
-	_creditAddr, tx, _, err := credit.DeployCredit(txAuth, backend, _accessAddr)
+	_creditAddr, tx, _, err := credit.DeployCredit(txAuth, endpoint, _accessAddr)
 	if err != nil {
 		logger.Panic("deploy credit err:", err)
 	}
@@ -107,7 +87,7 @@ func main() {
 	// deploy registry contract
 	// gas:1260180
 	logger.Info("deploying registry contract")
-	_registryAddr, tx, _, err := registry.DeployRegistry(txAuth, backend)
+	_registryAddr, tx, _, err := registry.DeployRegistry(txAuth, endpoint)
 	if err != nil {
 		logger.Panic("deploy registry err:", err)
 	}
@@ -120,6 +100,26 @@ func main() {
 
 	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	logger.Info("deploy registry gas used:", receipt.GasUsed)
+
+	// deploy market contract
+	// gas: 3428839
+	logger.Info("deploying market..")
+	_marketAddr, tx, _, err := market.DeployMarket(txAuth, endpoint, _registryAddr, _creditAddr)
+	if err != nil {
+		logger.Panic("deploy market err:", err)
+	}
+
+	logger.Info("tx hash:", tx.Hash())
+
+	logger.Info("created market address: ", _marketAddr.Hex())
+	logger.Info("waiting for tx to be ok")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
+	if err != nil {
+		logger.Panic("deploy contract err:", err)
+	}
+
+	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	logger.Info("deploy market gas used:", receipt.GasUsed)
 
 	// deploy token contract
 

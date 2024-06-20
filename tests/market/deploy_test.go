@@ -9,6 +9,7 @@ import (
 	"github.com/grid/contracts/go/access"
 	"github.com/grid/contracts/go/credit"
 	"github.com/grid/contracts/go/market"
+	"github.com/grid/contracts/go/registry"
 )
 
 func TestDeploy(t *testing.T) {
@@ -29,24 +30,6 @@ func TestDeploy(t *testing.T) {
 	// 2 gwei
 	txAuth.GasPrice = new(big.Int).SetUint64(2000000000)
 
-	// deploy market contract
-	// gas: 3428839
-	t.Log("deploying market..")
-	_marketAddr, tx, _, err := market.DeployMarket(txAuth, endpoint)
-	if err != nil {
-		t.Error("deploy market err:", err)
-	}
-
-	t.Log("created market address: ", _marketAddr.Hex())
-	t.Log("waiting for tx to be ok")
-	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
-	if err != nil {
-		t.Error("deploy contract err:", err)
-	}
-
-	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
-	t.Log("deploy market gas used:", receipt.GasUsed)
-
 	// deploy access contract
 	// gas:494259
 	t.Log("deploying access")
@@ -61,7 +44,7 @@ func TestDeploy(t *testing.T) {
 		t.Error("deploy contract err:", err)
 	}
 
-	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	t.Log("deploy access gas used:", receipt.GasUsed)
 
 	// set access for admin
@@ -97,11 +80,49 @@ func TestDeploy(t *testing.T) {
 	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	t.Log("deploy credit gas used:", receipt.GasUsed)
 
+	// deploy registry contract
+	// gas:1260180
+	t.Log("deploying registry contract")
+	_registryAddr, tx, _, err := registry.DeployRegistry(txAuth, endpoint)
+	if err != nil {
+		t.Fatal("deploy registry err:", err)
+	}
+	t.Log("registry address:", _registryAddr)
+	t.Log("waiting for tx to be ok")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Fatal("deploy contract err:", err)
+	}
+
+	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("deploy registry gas used:", receipt.GasUsed)
+
+	// deploy market contract
+	// gas: 3428839
+	t.Log("deploying market..")
+	_marketAddr, tx, _, err := market.DeployMarket(txAuth, endpoint, _registryAddr, _creditAddr)
+	if err != nil {
+		t.Fatal("deploy market err:", err)
+	}
+
+	t.Log("tx hash:", tx.Hash())
+
+	t.Log("created market address: ", _marketAddr.Hex())
+	t.Log("waiting for tx to be ok")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Fatal("deploy contract err:", err)
+	}
+
+	receipt = eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
+	t.Log("deploy market gas used:", receipt.GasUsed)
+
 	// save addresses into json
 	a := eth.Address{
-		Market: _marketAddr.Hex(),
-		Access: _accessAddr.Hex(),
-		Credit: _creditAddr.Hex(),
+		Market:   _marketAddr.Hex(),
+		Access:   _accessAddr.Hex(),
+		Credit:   _creditAddr.Hex(),
+		Registry: _registryAddr.Hex(),
 	}
 	eth.Save(a, "./contracts.json")
 }

@@ -8,12 +8,12 @@ pragma solidity >=0.8.2 <0.9.0;
  * @custom:dev-run-script ./scripts/deploy_with_ethers.ts
 */
 contract Registry {
-
+    // record the number of each resource type
     struct Resources{
-        uint64 CPU;
-        uint64 GPU;
-        uint64 MEM;
-        uint64 DISK;    
+        uint64 nCPU;
+        uint64 nGPU;
+        uint64 nMEM;
+        uint64 nDISK;
     }
 
     // cp info
@@ -42,16 +42,19 @@ contract Registry {
         registry[msg.sender].domain=domain;
         registry[msg.sender].port=port;
 
-        registry[msg.sender].total.CPU=cpu;
-        registry[msg.sender].total.GPU=gpu;
-        registry[msg.sender].total.MEM=mem;
-        registry[msg.sender].total.DISK=disk;
+        // total resource
+        registry[msg.sender].total.nCPU=cpu;
+        registry[msg.sender].total.nGPU=gpu;
+        registry[msg.sender].total.nMEM=mem;
+        registry[msg.sender].total.nDISK=disk;
 
-        registry[msg.sender].avail.CPU=cpu;
-        registry[msg.sender].avail.GPU=gpu;
-        registry[msg.sender].avail.MEM=mem;
-        registry[msg.sender].avail.DISK=disk;
+        // available resource
+        registry[msg.sender].avail.nCPU=cpu;
+        registry[msg.sender].avail.nGPU=gpu;
+        registry[msg.sender].avail.nMEM=mem;
+        registry[msg.sender].avail.nDISK=disk;
 
+        // store the provider key
         keys.push(msg.sender);
     }
 
@@ -73,16 +76,18 @@ contract Registry {
     /**
      * @dev update avail with order info, only called by market contract
     */
-    function update(uint64 cpu, uint64 gpu, uint64 mem, uint64 disk) public {
-        assert(cpu <= registry[msg.sender].avail.CPU);
-        assert(gpu <= registry[msg.sender].avail.GPU);
-        assert(mem <= registry[msg.sender].avail.MEM);
-        assert(disk <= registry[msg.sender].avail.DISK);
+    //function update(uint64 cpu, uint64 gpu, uint64 mem, uint64 disk) public {
+    function update(address provider, uint64 nCPU, uint64 nGPU, uint64 nMEM, uint64 nDISK) external {
+        require(nCPU <= registry[provider].avail.nCPU, "not enough cpu");
+        require(nGPU <= registry[provider].avail.nGPU, "not enough gpu");
+        require(nMEM <= registry[provider].avail.nMEM, "not enough mem");
+        require(nDISK <= registry[provider].avail.nDISK, "not enough disk");
 
-        registry[msg.sender].avail.CPU -= cpu;
-        registry[msg.sender].avail.GPU -= gpu;
-        registry[msg.sender].avail.MEM -= mem;
-        registry[msg.sender].avail.DISK -= disk;
+        // update available resource for provider
+        registry[provider].avail.nCPU -= nCPU;
+        registry[provider].avail.nGPU -= nGPU;
+        registry[provider].avail.nMEM -= nMEM;
+        registry[provider].avail.nDISK -= nDISK;
     }
 
     /**
@@ -91,5 +96,4 @@ contract Registry {
     function revise() public {
 
     }
-
 }

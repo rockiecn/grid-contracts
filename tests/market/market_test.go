@@ -11,6 +11,7 @@ import (
 	"github.com/grid/contracts/eth"
 	"github.com/grid/contracts/go/credit"
 	"github.com/grid/contracts/go/market"
+	"github.com/grid/contracts/go/registry"
 )
 
 var (
@@ -20,6 +21,8 @@ var (
 	AccessAddr common.Address
 	// credit contract address
 	CreditAddr common.Address
+	// registry contract address
+	RegistryAddr common.Address
 )
 
 // load all addresses from json
@@ -30,13 +33,15 @@ func TestLoad(t *testing.T) {
 	a := eth.Load("./contracts.json")
 	t.Logf("%+v\n", a)
 
-	if a.Market == "" || a.Access == "" || a.Credit == "" {
-		t.Error("all address must exist in json file")
+	if a.Market == "" || a.Access == "" || a.Credit == "" || a.Registry == "" {
+		t.Error("all contract addresses must exist in json file")
 	}
 
 	MarketAddr = common.HexToAddress(a.Market)
 	AccessAddr = common.HexToAddress(a.Access)
 	CreditAddr = common.HexToAddress(a.Credit)
+	RegistryAddr = common.HexToAddress(a.Registry)
+
 }
 
 // test create an order with test data
@@ -52,6 +57,12 @@ func TestCreateOrder(t *testing.T) {
 		t.Error("new contract instance failed:", err)
 	}
 
+	// get contract instance
+	registryIns, err := registry.NewRegistry(RegistryAddr, backend)
+	if err != nil {
+		t.Error("new contract instance failed:", err)
+	}
+
 	// auth for admin
 	authAdmin, err := eth.MakeAuth(chainID, eth.SK0)
 	if err != nil {
@@ -62,9 +73,31 @@ func TestCreateOrder(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
+	// auth for cp
+	authProvider, err := eth.MakeAuth(chainID, eth.SK2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// register a cp for test createorder
+	tx, err := registryIns.Register(authProvider, "123.123.123.0", "test domain", "123", 11, 22, 33, 44)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("waiting for tx to be ok")
+	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
+	if err != nil {
+		t.Error("wait tx err:", err)
+	}
+	// check cp info
+	cpInfo, err := registryIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error("get cp info err:", err)
+	}
+	t.Log("cp info:", cpInfo)
 
 	// generate an order with init data
-	totalValue, ok := new(big.Int).SetString("2831300", 10)
+	totalValue, ok := new(big.Int).SetString("2626954", 10)
 	if !ok {
 		log.Fatal("big set string failed")
 	}
@@ -72,6 +105,8 @@ func TestCreateOrder(t *testing.T) {
 	if !ok {
 		log.Fatal("big set string failed")
 	}
+
+	// a test order
 	order := market.MarketOrder{
 		User:     eth.Addr1,
 		Provider: eth.Addr2,
@@ -85,8 +120,8 @@ func TestCreateOrder(t *testing.T) {
 		R: market.MarketResources{
 			NCPU:  1,
 			NGPU:  2,
-			NMEM:  10,
-			NDISK: 100,
+			NMEM:  3,
+			NDISK: 4,
 		},
 		// deposit 0.01 eth
 		TotalValue:      totalValue,
@@ -101,15 +136,16 @@ func TestCreateOrder(t *testing.T) {
 		Status:          0, // unactive
 	}
 
+	// credit contract
 	creditIns, err := credit.NewCredit(CreditAddr, backend)
 	if err != nil {
 		t.Error(err)
 	}
-	// mint some credit for approve
+	// transfer some credit for approve
 	t.Log("admin mint some credit to user for create order")
-	tx, err := creditIns.Mint(authAdmin, eth.Addr1, order.TotalValue)
+	tx, err = creditIns.Transfer(authAdmin, eth.Addr1, order.TotalValue)
 	if err != nil {
-		t.Error("mint credit err:", err)
+		t.Error("transfer credit err:", err)
 	}
 	t.Log("waiting for tx to be ok")
 	err = eth.CheckTx(eth.Endpoint, tx.Hash(), "")
@@ -137,9 +173,11 @@ func TestCreateOrder(t *testing.T) {
 	}
 	t.Log("market balance before create order:", b_before.String())
 
+	t.Log("order to create: ", order)
+
 	// create order
 	t.Log("user call create order, order totalValue: ", order.TotalValue)
-	tx, err = marketIns.CreateOrder(authUser, CreditAddr, eth.Addr2, order)
+	tx, err = marketIns.CreateOrder(authUser, eth.Addr2, order)
 	if err != nil {
 		t.Error(err)
 	}
@@ -149,9 +187,29 @@ func TestCreateOrder(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-
 	receipt := eth.GetTransactionReceipt(eth.Endpoint, tx.Hash())
 	t.Log("create order gas used:", receipt.GasUsed)
+
+	// cp info
+	cpInfo, err = registryIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error("get cp info err:", err)
+	}
+	t.Log("cp info:", cpInfo)
+
+	// check updated avail resources in cp after createorder
+	if cpInfo.Avail.NCPU != 10 {
+		t.Fatalf("the available cpu is incorrect after createorder: %v, should be 10", cpInfo.Avail.NCPU)
+	}
+	if cpInfo.Avail.NGPU != 20 {
+		t.Fatalf("the available gpu is incorrect after createorder: %v, should be 20", cpInfo.Avail.NGPU)
+	}
+	if cpInfo.Avail.NMEM != 30 {
+		t.Fatalf("the available mem is incorrect after createorder: %v, should be 30", cpInfo.Avail.NMEM)
+	}
+	if cpInfo.Avail.NDISK != 40 {
+		t.Fatalf("the available disk is incorrect after createorder: %v, should be 40", cpInfo.Avail.NDISK)
+	}
 
 	// check credit balance of market contract after create order
 	b_after, err := creditIns.BalanceOf(&bind.CallOpts{}, MarketAddr)

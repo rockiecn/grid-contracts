@@ -3,6 +3,7 @@
 pragma solidity >=0.8.2 <0.9.0;
 
 import "../interfaces/ICredit.sol";
+import "../interfaces/IRegistry.sol";
 
 /**
  * @title Market
@@ -67,13 +68,19 @@ contract Market {
         address provider;
     }
 
+    // address for contract registry
+    address public registry;
+    address public credit;
+
     // record all orders for every user/provider pair
     mapping(address => mapping(address => Order)) orders;
     // record all keys for every order
     Key[] private keys;
 
     // constructor
-    constructor() {
+    constructor(address _registry, address _credit) {
+        registry = _registry;
+        credit = _credit;
     }
 
     event OrderValue(uint256 totalValue);
@@ -81,7 +88,7 @@ contract Market {
     /**
      * @dev user create an order with a provider， user approve must be called previously
      */
-    function createOrder(address creditAddr, address provider, Order memory order) external {
+    function createOrder(address provider, Order memory order) external {
         // verify the total value of this order with all resources and price
         uint256 totalValue = _valueOrder(order);
         require(totalValue==order.totalValue,"the totalvalue verify failed for this order");
@@ -89,10 +96,14 @@ contract Market {
         emit OrderValue(totalValue);
 
         // transfer token to market contract
-        ICredit(creditAddr).transferFrom(msg.sender, address(this), order.totalValue);
+        ICredit(credit).transferFrom(msg.sender, address(this), order.totalValue);
 
         // store order
         orders[msg.sender][provider] = order;
+
+        // update the provider info in registry with an order's resource number
+        IRegistry(registry).update(provider, order.r.nCPU, order.r.nGPU, order.r.nMEM, order.r.nDISK);
+
         // record the order key(address pair of user and provider)
         keys.push(Key(msg.sender, provider));
     }

@@ -15,6 +15,7 @@ var (
 	contractAddr common.Address
 )
 
+// deploy registry contract
 func TestDeploy(t *testing.T) {
 	t.Log("connecting to eth:", eth.Endpoint)
 
@@ -112,16 +113,16 @@ func TestRegister(t *testing.T) {
 	if regInfo.Port != "123" {
 		t.Error("port is error")
 	}
-	if regInfo.Total.CPU != 11 {
+	if regInfo.Total.NCPU != 11 {
 		t.Error("cpu is error")
 	}
-	if regInfo.Total.GPU != 22 {
+	if regInfo.Total.NGPU != 22 {
 		t.Error("gpu is error")
 	}
-	if regInfo.Total.MEM != 33 {
+	if regInfo.Total.NMEM != 33 {
 		t.Error("mem is error")
 	}
-	if regInfo.Total.DISK != 44 {
+	if regInfo.Total.NDISK != 44 {
 		t.Error("disk is error")
 	}
 }
@@ -164,7 +165,7 @@ func TestUpdate(t *testing.T) {
 	}
 
 	// call registry's update method
-	tx, err := contractIns.Update(txAuth2, 1, 1, 1, 1)
+	tx, err := contractIns.Update(txAuth2, eth.Addr2, 1, 1, 1, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -190,16 +191,16 @@ func TestUpdate(t *testing.T) {
 	if regInfo.Port != "123" {
 		t.Error("port is error")
 	}
-	if regInfo.Avail.CPU != 10 {
+	if regInfo.Avail.NCPU != 10 {
 		t.Error("cpu is error")
 	}
-	if regInfo.Avail.GPU != 21 {
+	if regInfo.Avail.NGPU != 21 {
 		t.Error("gpu is error")
 	}
-	if regInfo.Avail.MEM != 32 {
+	if regInfo.Avail.NMEM != 32 {
 		t.Error("mem is error")
 	}
-	if regInfo.Avail.DISK != 43 {
+	if regInfo.Avail.NDISK != 43 {
 		t.Error("disk is error")
 	}
 }

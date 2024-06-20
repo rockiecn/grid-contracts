@@ -54,7 +54,7 @@ func LoadJSON() Address {
 	return a
 }
 
-// load person from pathName
+// load from pathName and parse into Address
 func Load(pathName string) Address {
 	// load file
 	b, err := os.ReadFile(pathName)
