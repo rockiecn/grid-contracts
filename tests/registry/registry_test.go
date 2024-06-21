@@ -49,25 +49,25 @@ func TestDeploy(t *testing.T) {
 
 }
 
-func TestGet(t *testing.T) {
-	// connect to an eth node with ep
-	backend, chainID := eth.ConnETH(eth.Endpoint)
-	t.Log("chain id:", chainID)
+// func TestGet(t *testing.T) {
+// 	// connect to an eth node with ep
+// 	backend, chainID := eth.ConnETH(eth.Endpoint)
+// 	t.Log("chain id:", chainID)
 
-	// get token instance
-	contractIns, err := registry.NewRegistry(contractAddr, backend)
+// 	// get token instance
+// 	contractIns, err := registry.NewRegistry(contractAddr, backend)
 
-	if err != nil {
-		t.Error("new token instance failed:", err)
-	}
+// 	if err != nil {
+// 		t.Error("new token instance failed:", err)
+// 	}
 
-	// get balance of addr2
-	regInfo, err := contractIns.Get(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
-	if err != nil {
-		t.Error(err)
-	}
-	t.Log("registry info:", regInfo)
-}
+// 	// get balance of addr2
+// 	regInfo, err := contractIns.Get(&bind.CallOpts{From: eth.Addr2}, eth.Addr2)
+// 	if err != nil {
+// 		t.Error(err)
+// 	}
+// 	t.Log("registry info:", regInfo)
+// }
 
 func TestRegister(t *testing.T) {
 	// connect to an eth node with ep
@@ -87,7 +87,7 @@ func TestRegister(t *testing.T) {
 	}
 
 	// call registry's Set method
-	tx, err := contractIns.Register(txAuth2, "123.123.123.0", "test domain", "123", 11, 22, 33, 44)
+	tx, err := contractIns.Register(txAuth2, "123.123.123.0", "test domain", "123", 11, 22, 33, 44, 10, 20, 10, 1)
 	if err != nil {
 		t.Error(err)
 	}
@@ -202,5 +202,173 @@ func TestUpdate(t *testing.T) {
 	}
 	if regInfo.Avail.NDISK != 43 {
 		t.Error("disk is error")
+	}
+}
+
+// cp revise info
+func TestReviseIncrease(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := eth.ConnETH(eth.Endpoint)
+	t.Log("chain id:", chainID)
+
+	// get instance
+	contractIns, err := registry.NewRegistry(contractAddr, backend)
+	if err != nil {
+		t.Error("new token instance failed:", err)
+	}
+
+	// auth for cp
+	authCP, err := eth.MakeAuth(chainID, eth.SK2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// call  method
+	originInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("origin cp info:", originInfo)
+
+	// call revise method, resource increased
+	tx, err := contractIns.Revise(authCP, "321.321.321.0", "test domain revised", "321", 11+10, 22+20, 33+30, 44+40, 10, 20, 10, 1)
+	if err != nil {
+		t.Error(err)
+	}
+	// wait tx ok
+	t.Log("waiting for tx to be ok")
+	eth.CheckTx(eth.Endpoint, tx.Hash(), "")
+
+	//
+	newInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("new cp info:", newInfo)
+
+	// check
+	if newInfo.Avail.NCPU != 20 {
+		t.Fatalf("available cpu is incorrect: %v, should be %v", newInfo.Avail.NCPU, 20)
+	}
+	if newInfo.Avail.NGPU != 41 {
+		t.Fatalf("available gpu is incorrect: %v, should be %v", newInfo.Avail.NGPU, 41)
+	}
+	if newInfo.Avail.NMEM != 62 {
+		t.Fatalf("available mem is incorrect: %v, should be %v", newInfo.Avail.NMEM, 62)
+	}
+	if newInfo.Avail.NDISK != 83 {
+		t.Fatalf("available disk is incorrect: %v, should be %v", newInfo.Avail.NDISK, 83)
+	}
+}
+
+// cp revise info
+func TestReviseDecrease(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := eth.ConnETH(eth.Endpoint)
+	t.Log("chain id:", chainID)
+
+	// get instance
+	contractIns, err := registry.NewRegistry(contractAddr, backend)
+	if err != nil {
+		t.Error("new token instance failed:", err)
+	}
+
+	// auth for cp
+	authCP, err := eth.MakeAuth(chainID, eth.SK2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// call  method
+	originInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("origin cp info:", originInfo)
+
+	// call revise method, resource decreased
+	tx, err := contractIns.Revise(authCP, "321.321.321.0", "test domain revised", "321", 21-10, 42-20, 63-30, 84-40, 10, 20, 10, 1)
+	if err != nil {
+		t.Error(err)
+	}
+	// wait tx ok
+	t.Log("waiting for tx to be ok")
+	eth.CheckTx(eth.Endpoint, tx.Hash(), "")
+
+	//
+	newInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("new cp info:", newInfo)
+
+	// check
+	if newInfo.Avail.NCPU != 10 {
+		t.Fatalf("available cpu is incorrect: %v, should be %v", newInfo.Avail.NCPU, 10)
+	}
+	if newInfo.Avail.NGPU != 21 {
+		t.Fatalf("available gpu is incorrect: %v, should be %v", newInfo.Avail.NGPU, 21)
+	}
+	if newInfo.Avail.NMEM != 32 {
+		t.Fatalf("available mem is incorrect: %v, should be %v", newInfo.Avail.NMEM, 32)
+	}
+	if newInfo.Avail.NDISK != 43 {
+		t.Fatalf("available disk is incorrect: %v, should be %v", newInfo.Avail.NDISK, 43)
+	}
+}
+
+// cp revise info
+func TestReviseDecrease2(t *testing.T) {
+	// connect to an eth node with ep
+	backend, chainID := eth.ConnETH(eth.Endpoint)
+	t.Log("chain id:", chainID)
+
+	// get instance
+	contractIns, err := registry.NewRegistry(contractAddr, backend)
+	if err != nil {
+		t.Error("new token instance failed:", err)
+	}
+
+	// auth for cp
+	authCP, err := eth.MakeAuth(chainID, eth.SK2)
+	if err != nil {
+		t.Error(err)
+	}
+
+	// call  method
+	originInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("origin cp info:", originInfo)
+
+	// call revise method, resource decreased
+	tx, err := contractIns.Revise(authCP, "321.321.321.0", "test domain revised", "321", 0, 0, 0, 0, 10, 20, 10, 1)
+	if err != nil {
+		t.Error(err)
+	}
+	// wait tx ok
+	t.Log("waiting for tx to be ok")
+	eth.CheckTx(eth.Endpoint, tx.Hash(), "")
+
+	//
+	newInfo, err := contractIns.Get(&bind.CallOpts{}, eth.Addr2)
+	if err != nil {
+		t.Error(err)
+	}
+	t.Log("new cp info:", newInfo)
+
+	// check
+	if newInfo.Avail.NCPU != 0 {
+		t.Fatalf("available cpu is incorrect: %v, should be %v", newInfo.Avail.NCPU, 0)
+	}
+	if newInfo.Avail.NGPU != 0 {
+		t.Fatalf("available gpu is incorrect: %v, should be %v", newInfo.Avail.NGPU, 0)
+	}
+	if newInfo.Avail.NMEM != 0 {
+		t.Fatalf("available mem is incorrect: %v, should be %v", newInfo.Avail.NMEM, 0)
+	}
+	if newInfo.Avail.NDISK != 0 {
+		t.Fatalf("available disk is incorrect: %v, should be %v", newInfo.Avail.NDISK, 0)
 	}
 }

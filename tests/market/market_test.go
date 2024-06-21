@@ -80,7 +80,7 @@ func TestCreateOrder(t *testing.T) {
 	}
 
 	// register a cp for test createorder
-	tx, err := registryIns.Register(authProvider, "123.123.123.0", "test domain", "123", 11, 22, 33, 44)
+	tx, err := registryIns.Register(authProvider, "123.123.123.0", "test domain", "123", 11, 22, 33, 44, 10, 20, 10, 1)
 	if err != nil {
 		t.Error(err)
 	}

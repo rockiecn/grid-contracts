@@ -1,9 +1,9 @@
 {
-  "market": "0x3c1240310AFafaa3E38b3fdDd43cC5D42F62251d",
-  "access": "0xB6a44B4Fe2dA444a718620a391Df9bd2d7B42EC2",
-  "credit": "0x4049b3b20117b976062d99862DC4fb8248A7A5F7",
+  "market": "0x55CC3fA91634006FBe493e9c637f62c055a28859",
+  "access": "0x9eb9239DaE65108A2F8ECBaBF01a66978cAd261E",
+  "credit": "0x6871c7457b211e7C66D734d37646Abb0AC899DEe",
   "token": "",
-  "registry": "0xe976775C165FFAD44048fb17222C927793f16A32",
+  "registry": "0xFc59dF232313D2ef8E625D7b6a57a8F0f43c75Df",
   "swap": "",
   "pledge": ""
 }
